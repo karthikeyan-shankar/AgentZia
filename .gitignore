@@ -2,7 +2,7 @@
 krefter_store.json
 krefter_store.json.tmp
 __pycache__/
-uploads/
+/uploads/
 .dev.vars
 .wrangler/
 node_modules/
