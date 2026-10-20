@@ -83,6 +83,30 @@ Rules:
 - Never claim you changed something you did not put in actions. Don't read out ids or dates in YYYY-MM-DD form; say "Friday", "tomorrow"."""
 
 
+# Separate boards picked by ?u= (the page sends it from /hari, /keerthi); same list as lib/zia.js.
+# "single" boards have one parent node ("You") instead of the Student and Founder hubs.
+PROFILES = {"": {"name": "", "single": False}, "hari": {"name": "Hari Haran", "single": True}, "keerthi": {"name": "Keerthilakshmi", "single": True}}
+SINGLE_CATS = ["Exam", "Assignment", "Project", "Lab", "Work", "Personal", "Other"]
+
+
+def profile_of(raw_path):
+    query = urllib.parse.parse_qs(raw_path.split("?", 1)[1] if "?" in raw_path else "")
+    u = (query.get("u") or [""])[0].lower()
+    return u if u in PROFILES else None
+
+
+def system_for(u):
+    p = PROFILES.get(u) or PROFILES[""]
+    if not p["single"]:
+        return SYSTEM
+    s = SYSTEM.replace(
+        "for one person who is BOTH a college student and a startup founder.\nYou track what they HAVE to do and keep both lives balanced.",
+        f"for {p['name']}. You track what they HAVE to do.")
+    s = s.replace(',"side":"student|founder"', "").replace(' any of "text","side","cat"', ' any of "text","cat"')
+    s = re.sub(r"Categories: student -> .*\n", "Categories: " + ", ".join(SINGLE_CATS) + ".\n", s)
+    return s.replace("; gently flag if student or founder work is being neglected", "")
+
+
 def calendar(today):
     """Next 14 days as 'Friday = 2026-10-23' lines, so the model never has to do date math."""
     try:
@@ -97,12 +121,12 @@ def calendar(today):
     return d0, "\n".join(rows)
 
 
-def ask_groq(said, items, today, history):
+def ask_groq(said, items, today, history, u=""):
     d0, cal = calendar(today)
     pending = [i for i in items if not i.get("done")]
     recent_done = [i for i in items if i.get("done")][-8:]
     lines = [
-        f'id={i.get("id")} | {i.get("side")}/{i.get("cat")} | "{i.get("text")}" | pri {i.get("pri", 2)} | '
+        f'id={i.get("id")} | {"" if PROFILES.get(u, {}).get("single") else str(i.get("side")) + "/"}{i.get("cat")} | "{i.get("text")}" | pri {i.get("pri", 2)} | '
         f'due {i.get("due") or "none"} | {"DONE" if i.get("done") else "pending"}'
         for i in pending + recent_done
     ]
@@ -110,7 +134,7 @@ def ask_groq(said, items, today, history):
         f"Today is {d0.isoformat()} ({d0.strftime('%A')}). Calendar (a bare weekday means its first occurrence):\n{cal}\n\n"
         f"Task list:\n" + ("\n".join(lines) or "(empty)") + f'\n\nUser said: "{said}"'
     )
-    messages = [{"role": "system", "content": SYSTEM}]
+    messages = [{"role": "system", "content": system_for(u)}]
     for h in history[-8:]:
         if isinstance(h, dict) and h.get("role") in ("user", "assistant") and isinstance(h.get("content"), str):
             messages.append({"role": h["role"], "content": h["content"][:500]})
@@ -167,22 +191,26 @@ def link_info(url):
         return {"title": "", "image": "", "description": ""}
 
 
-def read_store():
+def store_path(u):
+    return STORE if not u else os.path.join(HERE, f"krefter_store.{u}.json")
+
+
+def read_store(u=""):
     with store_lock:
-        if not os.path.exists(STORE):
+        if not os.path.exists(store_path(u)):
             return {"items": [], "chat": [], "images": []}
-        with open(STORE, "r", encoding="utf-8") as f:
+        with open(store_path(u), "r", encoding="utf-8") as f:
             data = json.load(f)
         data.setdefault("images", [])
         return data
 
 
-def write_store(data):
+def write_store(data, u=""):
     with store_lock:
-        tmp = STORE + ".tmp"
+        tmp = store_path(u) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
-        os.replace(tmp, STORE)
+        os.replace(tmp, store_path(u))
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -212,7 +240,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/index.html", "/krefter.html"):
+        if path in ("/", "/index.html", "/krefter.html") or path.strip("/").lower() in PROFILES:
             with open(os.path.join(HERE, "public", "index.html"), "rb") as f:
                 raw = f.read()
             self.send_response(200)
@@ -246,12 +274,16 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/items":
             if not self.authed():
                 return self.send_json(401, {"error": "locked"})
-            self.send_json(200, read_store())
+            u = profile_of(self.path)
+            if u is None:
+                return self.send_json(404, {"error": "unknown profile"})
+            self.send_json(200, read_store(u))
         else:
             self.send_json(404, {"error": "not found"})
 
     def do_PUT(self):
-        if self.path != "/api/items":
+        u = profile_of(self.path)
+        if self.path.split("?", 1)[0] != "/api/items" or u is None:
             return self.send_json(404, {"error": "not found"})
         if not self.authed():
             return self.send_json(401, {"error": "locked"})
@@ -260,7 +292,7 @@ class Handler(BaseHTTPRequestHandler):
             items = [i for i in req.get("items", []) if isinstance(i, dict)][:2000]
             chat = [m for m in req.get("chat", []) if isinstance(m, dict)][-100:]
             images = [m for m in req.get("images", []) if isinstance(m, dict)][:500]
-            write_store({"items": items, "chat": chat, "images": images})
+            write_store({"items": items, "chat": chat, "images": images}, u)
             self.send_json(200, {"ok": True})
         except Exception as e:
             self.send_json(400, {"error": type(e).__name__})
@@ -292,7 +324,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/api/upload":
             return self.upload()
-        if self.path != "/api/chat":
+        u = profile_of(self.path)
+        if self.path.split("?", 1)[0] != "/api/chat" or u is None:
             return self.send_json(404, {"error": "not found"})
         if not self.authed():
             return self.send_json(401, {"error": "locked"})
@@ -303,7 +336,7 @@ class Handler(BaseHTTPRequestHandler):
             said = str(req.get("said", ""))[:600]
             items = [i for i in req.get("items", []) if isinstance(i, dict)][:300]
             history = req.get("history", []) if isinstance(req.get("history"), list) else []
-            self.send_json(200, ask_groq(said, items, str(req.get("today", "")), history))
+            self.send_json(200, ask_groq(said, items, str(req.get("today", "")), history, u))
         except urllib.error.HTTPError as e:
             self.send_json(502, {"error": f"Groq HTTP {e.code}"})
         except Exception as e:

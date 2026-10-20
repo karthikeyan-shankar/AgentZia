@@ -144,6 +144,8 @@
   .tags { display: flex; flex-wrap: wrap; gap: 6px; }
   .tag { font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 5px; background: var(--elev); color: var(--ink2); }
   .tag.student { color: var(--student); } .tag.founder { color: var(--founder); }
+  /* single-role boards (/hari, /keerthi): one parent node, no student/founder split */
+  .single .chip[title="Pending work split"], .single .legend span:nth-child(-n+2), .single #filter, .single .f:has(#edSide) { display: none !important; }
   .tag.over { color: var(--danger); } .tag.soon { color: var(--warn); }
   .card .acts { display: flex; gap: 6px; margin-top: 14px; }
   .btn { height: 32px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line2); background: var(--bg2); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: var(--shadow-sm); white-space: nowrap; }
@@ -535,7 +537,7 @@
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><div class="logo">Z</div><div>Zia<small>Student × Founder workspace</small></div></div>
+    <div class="brand"><div class="logo">Z</div><div>Zia<small id="brandSub">Student × Founder workspace</small></div></div>
     <div class="stats">
       <div class="chip"><b id="stPending">0</b>pending</div>
       <div class="chip danger"><b id="stOver">0</b>overdue</div>
@@ -677,6 +679,19 @@ const CATS = {
   student: ["Assignment", "Exam", "Project", "Lab", "Other"],
   founder: ["Product", "Customers", "Fundraising", "Team", "Other"]
 };
+// Separate boards on the same site: /hari and /keerthi have one parent node and their own saved data.
+const PROFILES = { hari: { name: "Hari Haran" }, keerthi: { name: "Keerthilakshmi" } };
+const PROFILE = (() => {
+  const u = (location.pathname.replace(/^\/+|\/+$/g, "") || new URLSearchParams(location.search).get("u") || "").toLowerCase();
+  return PROFILES[u] ? u : "";
+})();
+const SINGLE = !!PROFILE;
+if (SINGLE) CATS.student = ["Exam", "Assignment", "Project", "Lab", "Work", "Personal", "Other"]; // everything lives on one side
+const pkey = k => PROFILE ? k + "@" + PROFILE : k; // localStorage key for this board
+if (SINGLE) {
+  document.documentElement.classList.add("single");
+  document.title = "Zia · " + PROFILES[PROFILE].name;
+}
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const CHECK_SVG = '<svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
 const $ = s => document.querySelector(s);
@@ -689,9 +704,9 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
 
-let items = store.get("krefter_v2", null) || store.get("krefter", []);
-let chat = store.get("krefter_chat", []);
-let images = store.get("krefter_images", []); // pictures pinned on the board: {id, src, w, h, size, attach, dx, dy, x, y}
+let items = store.get(pkey("krefter_v2"), null) || (SINGLE ? [] : store.get("krefter", []));
+let chat = store.get(pkey("krefter_chat"), []);
+let images = store.get(pkey("krefter_images"), []); // pictures pinned on the board: {id, src, w, h, size, attach, dx, dy, x, y}
 const settings = Object.assign({ voiceOn: true, accent: "#0d9488", theme: "light" }, store.get("krefter_settings", {}));
 const SERVER = location.protocol.startsWith("http");
 const AI = { ok: false };
@@ -743,13 +758,14 @@ function celebrate(id) { bursts[id] = performance.now(); haptic(14); }
 /* ================= persistence ================= */
 let syncTimer = null;
 function api(path, opts = {}) {
+  if (PROFILE && /^\/api\/(items|chat)$/.test(path)) path += "?u=" + PROFILE;
   opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, passKey ? { "X-Zia-Key": passKey } : {});
   return fetch(path, opts);
 }
 function persist() {
-  store.set("krefter_v2", items);
-  store.set("krefter_chat", chat.slice(-80));
-  try { localStorage.setItem("krefter_images", JSON.stringify(images)); }
+  store.set(pkey("krefter_v2"), items);
+  store.set(pkey("krefter_chat"), chat.slice(-80));
+  try { localStorage.setItem(pkey("krefter_images"), JSON.stringify(images)); }
   catch (e) { if (!persist.warned) { persist.warned = true; toast("This browser's storage is full. Run Zia through the server to keep more images."); } }
   if (SERVER && serverReady) {
     clearTimeout(syncTimer);
@@ -804,7 +820,8 @@ function build() {
   const ns = G.ls > 1 ? 1.3 : 1; // phones: bigger circles and text so the map reads at a glance
   const me = add("me", "me", { r: 46 * ns });
   const hubs = {};
-  ["student", "founder"].forEach(s => {
+  if (SINGLE) hubs.student = me; // categories hang straight off "You"
+  else ["student", "founder"].forEach(s => {
     const h = add("hub-" + s, "hub", { side: s, r: 38 * ns, label: s === "student" ? "Student" : "Founder", parent: me });
     const p = hubPos(s); h.x = p.x; h.y = p.y; hubs[s] = h;
     links.push({ a: me, b: h, seed: Math.random() });
@@ -814,14 +831,18 @@ function build() {
     const cid = "cat-" + it.side + "-" + it.cat;
     let c = cats[cid];
     if (!c) {
-      c = add(cid, "cat", { side: it.side, r: 22 * ns, label: it.cat, parent: hubs[it.side] }, hubs[it.side]);
-      cats[cid] = c; links.push({ a: hubs[it.side], b: c, d: 135 * G.ls, seed: Math.random() });
+      c = add(cid, "cat", { side: it.side, r: (SINGLE ? 28 : 22) * ns, label: it.cat, parent: hubs[it.side] }, hubs[it.side]);
+      cats[cid] = c; links.push({ a: hubs[it.side], b: c, d: (SINGLE ? 170 : 135) * G.ls, seed: Math.random() });
     }
     const n = add(it.id, "item", { side: it.side, item: it, r: (9 + (it.pri || 2) * 2.6) * ns, parent: c }, c);
     ctx.font = `500 ${12 * G.ls}px ${FONT}`; // label width, so the layout can keep labels apart
     n.lw = Math.max(ctx.measureText(shortLabel(it.text)).width, 70);
     links.push({ a: c, b: n, d: 90 * G.ls, seed: Math.random() });
   });
+  if (SINGLE) { // spread the categories evenly around "You"
+    const cs = nodes.filter(n => n.kind === "cat");
+    cs.forEach((c, i) => c.ang = Math.PI / 2 + i * 2 * Math.PI / cs.length); // first one straight below
+  }
   nodes.forEach(n => {
     if (n.kind === "hub" || n.kind === "cat") {
       const all = items.filter(i => n.kind === "hub" ? i.side === n.side : "cat-" + i.side + "-" + i.cat === n.id);
@@ -876,7 +897,10 @@ function physics() {
   N.forEach(n => {
     if (n.kind === "me") { n.x = 0; n.y = 0; n.vx = n.vy = 0; return; }
     if (n.kind === "hub") { const p = hubPos(n.side); n.x = p.x; n.y = p.y; n.vx = n.vy = 0; return; }
-    if (n.kind === "cat") { // fan categories outward, away from "You"
+    if (n.kind === "cat" && SINGLE) {
+      const out = 190 * G.ls;
+      n.vx += (Math.cos(n.ang) * out - n.x) * .012; n.vy += (Math.sin(n.ang) * out - n.y) * .012;
+    } else if (n.kind === "cat") { // fan categories outward, away from "You"
       const p = hubPos(n.side), len = Math.hypot(p.x, p.y) || 1;
       const upright = G.W < G.H * .9, out = (upright ? 120 : 170) * G.ls;
       n.vx += (p.x + p.x / len * out - n.x) * .012; n.vy += (p.y + p.y / len * out - n.y) * (upright ? .008 : .012);
@@ -1344,7 +1368,8 @@ function showCard(n) {
   card.replaceChildren();
   card.append(el("h4", null, it.text));
   const tags = el("div", "tags");
-  tags.append(el("span", "tag " + it.side, it.side === "founder" ? "Founder" : "Student"), el("span", "tag", it.cat),
+  if (!SINGLE) tags.append(el("span", "tag " + it.side, it.side === "founder" ? "Founder" : "Student"));
+  tags.append(el("span", "tag", it.cat),
     el("span", "tag " + urgency(it), it.done ? "Done" : it.due ? dueShort(it.due) : "No date"));
   if ((it.pri || 2) === 3) tags.append(el("span", "tag over", "High priority"));
   card.append(tags);
@@ -1795,7 +1820,7 @@ $("#btnNew").onclick = $("#btnNew2").onclick = () => openEditor(null);
 
 /* ================= agent ================= */
 function applyActions(actions) {
-  const chips = [], norm = s => s === "founder" ? "founder" : "student";
+  const chips = [], norm = s => s === "founder" && !SINGLE ? "founder" : "student";
   (Array.isArray(actions) ? actions : []).slice(0, 15).forEach(a => {
     if (!a || typeof a !== "object") return;
     if (a.type === "link") { // pin a web link, on a task if one was named
@@ -1856,7 +1881,7 @@ function parseAdd(raw) {
   s = s.replace(/\b(urgent(ly)?|asap|high priority|important)\b/ig, " ").replace(/\s+/g, " ").trim()
     .replace(/\b(due|by|on|before)$/i, "").trim().replace(/^(a|an|the|to)\s+/i, "");
   if (!s) return null;
-  const side = FOUNDER_WORDS.test(s) && !STUDENT_WORDS.test(s) ? "founder" : "student";
+  const side = FOUNDER_WORDS.test(s) && !STUDENT_WORDS.test(s) && !SINGLE ? "founder" : "student";
   const cat = (CAT_WORDS[side].find(([, re]) => re.test(s)) || ["Other"])[0];
   return { type: "add", text: s.charAt(0).toUpperCase() + s.slice(1), side, cat, pri: /urgent|important|high priority|asap/i.test(raw) ? 3 : 2, due };
 }
@@ -1927,14 +1952,15 @@ async function runCommand(text) {
 }
 
 /* chat UI */
-const SUGGEST = ["What should I focus on first?", "DBMS record due tomorrow", "Investor call on Friday, high priority", "How balanced is my week?"];
+const SUGGEST = SINGLE ? ["What should I focus on first?", "What exams do I have?", "Lab record due tomorrow", "Assignment due Friday, high priority"]
+  : ["What should I focus on first?", "DBMS record due tomorrow", "Investor call on Friday, high priority", "How balanced is my week?"];
 const animatedMsgs = new WeakSet();
 function renderChat() {
   const box = $("#msgs"); box.replaceChildren();
   if (!chat.length) {
     const w = el("div", "welcome");
     w.append(el("div", "mini-orb"), el("h3", null, "What's on your plate?"),
-      el("p", null, "Tell Zia about coursework or company work. It keeps track, puts deadlines on your calendar and flags what needs attention."));
+      el("p", null, (SINGLE ? "Tell Zia what you have. It keeps track, puts deadlines on your calendar and flags what needs attention." : "Tell Zia about coursework or company work. It keeps track, puts deadlines on your calendar and flags what needs attention.")));
     const s = el("div", "sugg");
     SUGGEST.forEach(q => { const b = el("button", null, q); b.onclick = () => runCommand(q); s.append(b); });
     w.append(s); box.append(w);
@@ -2229,6 +2255,7 @@ function applyAccent(hex) {
   const n = parseInt(hex.slice(1), 16);
   document.documentElement.style.setProperty("--accent", hex);
   document.documentElement.style.setProperty("--accent-soft", `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},.18)`);
+  if (SINGLE) document.documentElement.style.setProperty("--student", hex);
   readColors();
 }
 function applyTheme(t) {
@@ -2322,6 +2349,7 @@ async function loadServer() {
   } catch (e) { setPill(false, "Offline"); }
 }
 async function boot() {
+  if (SINGLE) $("#brandSub").textContent = PROFILES[PROFILE].name;
   readColors(); if (settings.accent) applyAccent(settings.accent); syncToggles(); setOrb("idle");
   new ResizeObserver(resize).observe(canvas);
   resize(); build(); renderStats(); renderTasks(); renderCal(); renderChat();
