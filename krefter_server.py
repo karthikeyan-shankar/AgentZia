@@ -69,6 +69,8 @@ Categories: student -> Assignment, Exam, Project, Lab, Other. founder -> Product
 pri: 3 = urgent/important, 2 = normal, 1 = low.
 
 Rules:
+- The words come from speech recognition. Fix obvious mishearings (e.g. "full strike" -> "full stack", "big data analytic" -> "Big Data Analytics"),
+  drop filler like "I have", "there is", "institute for", and keep task titles short and clean (2-6 words, Title Case).
 - One sentence may contain several tasks: return one add action each.
 - Resolve dates ONLY from the calendar given. Leave due empty if none was said.
 - Only use ids from the task list. Never invent ids. Use the conversation to resolve "that", "it", "the last one".
