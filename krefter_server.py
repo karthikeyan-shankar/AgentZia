@@ -175,7 +175,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path in ("/", "/index.html", "/krefter.html"):
-            with open(os.path.join(HERE, "krefter.html"), "rb") as f:
+            with open(os.path.join(HERE, "public", "index.html"), "rb") as f:
                 raw = f.read()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")

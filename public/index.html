@@ -1009,7 +1009,7 @@ function downscale(file, max) { // shrink big photos so the board stays fast and
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
       const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      cv.toBlob(b => b ? resolve({ blob: b, w, h }) : reject(new Error("encode")), "image/jpeg", .85);
+      cv.toBlob(b => b ? resolve({ blob: b, w, h }) : reject(new Error("encode")), "image/jpeg", .82);
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
     img.src = url;
@@ -1020,7 +1020,7 @@ const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.on
 async function addImageFile(file, opts = {}) {
   if (!file || !/^image\//.test(file.type)) return;
   let shrunk;
-  try { shrunk = await downscale(file, 1400); } catch (e) { toast("Couldn't read that image."); return; }
+  try { shrunk = await downscale(file, 1280); } catch (e) { toast("Couldn't read that image."); return; }
   let src = null;
   if (SERVER && serverReady) {
     try {
