@@ -138,7 +138,7 @@
   .zoom button + button { border-top: 1px solid var(--line); }
   .hint { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); color: var(--ink3); font-size: 13px; pointer-events: none; text-align: center; white-space: nowrap; }
   .hint kbd { font: 500 11px Inter, sans-serif; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line2); border-bottom-width: 2px; background: var(--bg2); color: var(--ink2); }
-  .card { position: absolute; z-index: 4; width: 264px; background: var(--surface-solid); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 14px; display: none; animation: cardIn .15s ease-out; }
+  .card { position: absolute; z-index: 4; width: 300px; background: var(--surface-solid); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 14px; display: none; animation: cardIn .15s ease-out; }
   .card.on { display: block; }
   .card h4 { margin: 0 0 10px; font-size: 14px; font-weight: 600; line-height: 1.4; word-break: break-word; letter-spacing: -.01em; }
   .tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -286,16 +286,176 @@
   .toast button { color: var(--bg2); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; flex: none; }
 
   @media (max-width: 1180px) { .chip.opt { display: none; } .app { grid-template-columns: minmax(0,1fr) 370px; } }
+  /* ===== Liquid Glass: translucent panes floating over the board, pill controls, springy motion ===== */
+  :root {
+    --spring: cubic-bezier(.2, .9, .25, 1.12);
+    --g-bg: rgba(255,255,255,.55); --g-strong: rgba(255,255,255,.78); --g-fill: rgba(255,255,255,.5);
+    --g-border: rgba(255,255,255,.8); --g-edge: rgba(15,23,42,.07); --g-hi: rgba(255,255,255,.95);
+    --g-shadow: 0 1px 1px rgba(16,24,40,.04), 0 12px 40px rgba(16,24,40,.12);
+    --g-blur: blur(26px) saturate(180%);
+  }
+  :root[data-theme="dim"] { --g-bg: rgba(244,246,249,.58); --g-strong: rgba(247,248,250,.82); --g-fill: rgba(255,255,255,.42); --g-border: rgba(255,255,255,.7); }
+  :root[data-theme="dark"], :root[data-theme="graphene"] {
+    --g-bg: rgba(32,33,38,.55); --g-strong: rgba(38,39,45,.82); --g-fill: rgba(255,255,255,.07);
+    --g-border: rgba(255,255,255,.12); --g-edge: rgba(0,0,0,.4); --g-hi: rgba(255,255,255,.14);
+    --g-shadow: 0 1px 1px rgba(0,0,0,.3), 0 14px 44px rgba(0,0,0,.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme="system"] {
+      --g-bg: rgba(32,33,38,.55); --g-strong: rgba(38,39,45,.82); --g-fill: rgba(255,255,255,.07);
+      --g-border: rgba(255,255,255,.12); --g-edge: rgba(0,0,0,.4); --g-hi: rgba(255,255,255,.14);
+      --g-shadow: 0 1px 1px rgba(0,0,0,.3), 0 14px 44px rgba(0,0,0,.5);
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, system-ui, "Segoe UI", sans-serif; letter-spacing: -.005em; }
+  /* a soft colour wash behind the board gives the glass something to refract */
+  .stage { background:
+      radial-gradient(900px 620px at 12% 18%, color-mix(in srgb, var(--student) 13%, transparent), transparent 62%),
+      radial-gradient(820px 600px at 88% 85%, color-mix(in srgb, var(--founder) 11%, transparent), transparent 62%),
+      radial-gradient(760px 520px at 55% 45%, var(--accent-soft), transparent 66%),
+      var(--bg); }
+  .top, .panel, .legend, .zoom, .card, .menu, .sheet, .toast {
+    background: var(--g-bg); backdrop-filter: var(--g-blur); -webkit-backdrop-filter: var(--g-blur);
+    border: 1px solid var(--g-border); box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-hi), inset 0 0 0 .5px var(--g-edge);
+  }
+  .card, .menu, .sheet, .toast { background: var(--g-strong); }
+  .card { border-radius: 22px; animation: glassIn .38s var(--spring); }
+  .menu { border-radius: 18px; padding: 8px; animation: glassIn .32s var(--spring); }
+  .menu button { border-radius: 10px; }
+  .sheet { border-radius: 28px; animation: glassIn .38s var(--spring); }
+  .toast { color: var(--ink); border-radius: 999px; padding: 10px 14px 10px 18px; }
+  .toast button { color: var(--accent); }
+  .legend { border-radius: 999px; padding: 7px 14px; }
+  .zoom { border-radius: 18px; }
+  .zoom button + button { border-top-color: var(--g-border); }
+  @keyframes glassIn { from { transform: translateY(10px) scale(.95); } }
+  .modal { background: rgba(10,10,14,.22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .lock { background: var(--bg); }
+  .viewer { background: rgba(10,10,14,.72); }
+  .btn { border-radius: 999px; background: var(--g-fill); border: 1px solid var(--g-border); box-shadow: inset 0 1px 0 var(--g-hi), 0 1px 2px rgba(0,0,0,.06);
+    transition: transform .3s var(--spring), background .2s, filter .2s; }
+  .btn:hover { background: var(--g-strong); }
+  .btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent)); border-color: color-mix(in srgb, var(--accent) 65%, #fff);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 16px var(--accent-soft); }
+  .btn.primary:hover { opacity: 1; filter: brightness(1.06); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent)); }
+  .icon-btn, .send, .tab, .seg button, .achip, .sugg button, .task, .cal-cell, .tg, .mic, .fab { transition: transform .3s var(--spring), background .25s, color .2s, box-shadow .3s; }
+  .btn:active, .icon-btn:active, .tab:active, .seg button:active, .achip:active, .sugg button:active, .task:active, .cal-cell:active, .tg:active, .send:active, .mic:active { transform: scale(.94); }
+  .icon-btn { border-radius: 999px; }
+  .icon-btn:hover { background: var(--g-fill); border-color: transparent; }
+  .logo { border-radius: 9px; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 4px 12px var(--accent-soft); }
+  .pill, .tg { border-radius: 999px; background: var(--g-fill); border-color: var(--g-border); }
+  .inp { border-radius: 14px; background: var(--g-fill); border-color: var(--g-border); box-shadow: inset 0 1px 2px rgba(0,0,0,.05); }
+  .field { border-radius: 999px; height: 50px; padding-left: 18px; background: var(--g-fill); border-color: var(--g-border); box-shadow: inset 0 1px 2px rgba(0,0,0,.05); }
+  .send { border-radius: 999px; }
+  .mic { border-radius: 50%; width: 50px; height: 50px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 18px var(--accent-soft); }
+  .mic:hover { opacity: 1; filter: brightness(1.06); }
+  .composer { border-top-color: transparent; }
+  /* tabs and filters become glass segmented controls */
+  .tabs { margin: 12px 14px 6px; padding: 4px; gap: 4px; border: 0; border-radius: 999px; background: var(--g-fill); box-shadow: inset 0 1px 2px rgba(0,0,0,.06); }
+  .tab { flex: 1; justify-content: center; height: 34px; border: 0; margin: 0; border-radius: 999px; }
+  .tab.on { background: var(--g-strong); border-bottom-color: transparent; box-shadow: 0 2px 10px rgba(0,0,0,.10), inset 0 1px 0 var(--g-hi); }
+  .seg { border-radius: 999px; background: var(--g-fill); border-color: var(--g-border); padding: 3px; }
+  .seg button { border-radius: 999px; }
+  .seg button.on { background: var(--g-strong); box-shadow: 0 2px 8px rgba(0,0,0,.10), inset 0 1px 0 var(--g-hi); }
+  /* chat */
+  .msg { border-radius: 20px; padding: 10px 14px; }
+  .msg.user { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, #fff), var(--accent)); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 4px 14px var(--accent-soft); border-bottom-right-radius: 8px; }
+  .msg.agent { background: var(--g-strong); border: 1px solid var(--g-border); box-shadow: inset 0 1px 0 var(--g-hi), 0 2px 10px rgba(0,0,0,.05); border-bottom-left-radius: 8px; }
+  .achip { border-radius: 999px; background: var(--g-fill); border-color: var(--g-border); }
+  .sugg button { border-radius: 16px; background: var(--g-fill); border-color: var(--g-border); }
+  .sugg button:hover { background: var(--g-strong); }
+  /* tasks + calendar */
+  .task { border-radius: 14px; }
+  .task:hover { background: var(--g-fill); }
+  .check { border-radius: 50%; background: var(--g-fill); }
+  .cal-cell { border-radius: 12px; }
+  .cal-cell:hover { background: var(--g-fill); }
+  .cal-cell.sel { background: var(--g-strong); box-shadow: 0 2px 10px rgba(0,0,0,.08), inset 0 1px 0 var(--g-hi); }
+  .cal-cell .n { border-radius: 50%; }
+  .cal-cell.today .n { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 3px 10px var(--accent-soft); }
+  .cal-day { border-top-color: var(--g-border); }
+  .tag { border-radius: 999px; background: var(--g-fill); }
+
+  /* desktop: the board fills the window; the bar and panel float over it */
+  @media (min-width: 861px) {
+    .app { display: block; height: 100vh; height: 100dvh; }
+    .stage { position: fixed; inset: 0; }
+    .top { position: fixed; top: 12px; left: 12px; right: 12px; height: 60px; border-radius: 22px; z-index: 6; padding: 0 12px 0 16px; }
+    .panel { position: fixed; top: 84px; right: 12px; bottom: 12px; width: 400px; border-radius: 28px; z-index: 5; overflow: hidden; }
+    .legend { top: 86px; left: 24px; }
+    .zoom { right: 436px; bottom: 24px; }
+    .hint { left: calc((100% - 424px) / 2); }
+  }
+  @media (min-width: 861px) and (max-width: 1180px) {
+    .panel { width: 360px; } .zoom { right: 396px; } .hint { left: calc((100% - 384px) / 2); }
+  }
+
+  /* glass: the floating mic and captions on phones */
+  :root { --glass-solid: rgba(255,255,255,.86); --glass: rgba(255,255,255,.62); --glass-2: rgba(255,255,255,.26); --glass-border: rgba(255,255,255,.85); --glass-shadow: 0 12px 34px rgba(16,24,40,.18); }
+  :root[data-theme="dark"], :root[data-theme="graphene"] { --glass-solid: rgba(32,34,39,.86); --glass: rgba(46,48,54,.58); --glass-2: rgba(20,20,24,.30); --glass-border: rgba(255,255,255,.14); --glass-shadow: 0 12px 34px rgba(0,0,0,.55); }
+  @media (prefers-color-scheme: dark) { :root[data-theme="system"] { --glass-solid: rgba(32,34,39,.86); --glass: rgba(46,48,54,.58); --glass-2: rgba(20,20,24,.30); --glass-border: rgba(255,255,255,.14); --glass-shadow: 0 12px 34px rgba(0,0,0,.55); } }
+  .fab-wrap, .scrim, .sheet-grab { display: none; }
+  .fab { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; color: var(--accent); position: relative;
+    background: linear-gradient(150deg, var(--glass), var(--glass-2));
+    backdrop-filter: blur(18px) saturate(170%); -webkit-backdrop-filter: blur(18px) saturate(170%);
+    border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,.5);
+    transition: transform .15s, background .25s, color .25s; -webkit-tap-highlight-color: transparent; }
+  .fab:active { transform: scale(.93); }
+  .fab svg.i { width: 30px; height: 30px; stroke-width: 1.8; }
+  .fab.on { color: #fff; background: linear-gradient(150deg, rgba(240,68,56,.88), rgba(200,40,30,.72)); border-color: rgba(255,255,255,.35); }
+  .fab.on::before { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid rgba(240,68,56,.55); animation: fabring 1.5s ease-out infinite; }
+  .fab.talk:not(.on) { color: #fff; background: linear-gradient(150deg, var(--accent), var(--accent)); }
+  .fab.busy::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--accent); animation: spin .9s linear infinite; }
+  @keyframes fabring { from { transform: scale(.92); opacity: 1; } to { transform: scale(1.38); opacity: 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .grab-btn { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--ink3); font-size: 11px; font-weight: 500; padding: 4px 18px; -webkit-tap-highlight-color: transparent; }
+  .grab-btn span { width: 38px; height: 4px; border-radius: 2px; background: var(--ink3); opacity: .55; }
+  .caption { max-width: min(90vw, 440px); margin-bottom: 14px; padding: 11px 16px; border-radius: 18px; text-align: center; font-size: 15px; line-height: 1.45; color: var(--ink);
+    background: var(--glass); backdrop-filter: blur(20px) saturate(170%); -webkit-backdrop-filter: blur(20px) saturate(170%);
+    border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); display: none; cursor: pointer; background: var(--glass-solid); }
+  .caption.on { display: block; animation: cardIn .2s ease-out; }
+  .caption small { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink3); margin-bottom: 3px; letter-spacing: .02em; }
+  .caption .chips { justify-content: center; }
+
   @media (max-width: 860px) {
-    .app { grid-template-columns: minmax(0,1fr); grid-template-rows: 52px 46dvh minmax(0,1fr); }
-    .stats, .brand small, .legend, .hint { display: none; }
-    .top { gap: 8px; padding: 0 10px 0 14px; } .actions { margin-left: auto; }
-    .panel { border-left: 0; border-top: 1px solid var(--line); }
-    .zoom { right: 10px; bottom: 10px; }
-    .card { width: 236px; }
+    .app { grid-template-columns: minmax(0,1fr); grid-template-rows: 52px minmax(0,1fr); }
+    .stats, .brand small, .legend, .hint, #zIn, #zOut { display: none; }
+    .top { gap: 8px; padding: 0 8px 0 14px; } .actions { margin-left: auto; }
+    .zoom { right: 12px; top: 12px; bottom: auto; border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+      backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); }
+    .zoom button { width: 44px; height: 44px; }
+    .zoom button + button { border-top-color: var(--glass-border); }
+    .card { position: fixed; left: 12px !important; right: 12px; top: auto !important; bottom: calc(132px + env(safe-area-inset-bottom)); width: auto; z-index: 12; border-radius: 16px; padding: 16px; }
+    .card .btn { height: 40px; }
+    .fab-wrap { display: flex; flex-direction: column; align-items: center; position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+      z-index: 11; width: max-content; max-width: 100vw; transition: opacity .25s, transform .25s; }
+    body.sheet-open .fab-wrap { opacity: 0; pointer-events: none; transform: translate(-50%, 24px); }
+    .scrim { display: block; position: fixed; inset: 0; z-index: 14; background: rgba(0,0,0,.34); opacity: 0; pointer-events: none; transition: opacity .3s; }
+    body.sheet-open .scrim { opacity: 1; pointer-events: auto; }
+    .panel { position: fixed; left: 0; right: 0; bottom: 0; height: 84dvh; z-index: 15; border: 1px solid var(--line); border-bottom: 0; border-radius: 22px 22px 0 0;
+      box-shadow: 0 -14px 44px rgba(0,0,0,.25); transform: translateY(105%); visibility: hidden;
+      transition: transform .34s cubic-bezier(.2,.8,.2,1), visibility 0s linear .34s; }
+    body.sheet-open .panel { transform: none; visibility: visible; transition: transform .34s cubic-bezier(.2,.8,.2,1); }
+    .panel.dragging { transition: none !important; }
+    .sheet-grab { display: flex; justify-content: center; padding: 10px 0 0; touch-action: none; }
+    .sheet-grab span { width: 42px; height: 5px; border-radius: 3px; background: var(--line2); }
+    .tabs { touch-action: none; }
+    .toasts { bottom: calc(150px + env(safe-area-inset-bottom)); }
+    body.sheet-open .toasts { bottom: 24px; }
     #vCal { overflow-y: auto; }
     #vCal .cal-day { flex: none; overflow: visible; }
-    .cal-cell { height: 42px; }
+    .cal-cell { height: 44px; }
+    .task { padding: 12px 8px; }
+  }
+  /* phones: board full screen behind a floating glass bar; the sheet is glass too */
+  @media (max-width: 860px) {
+    .app { display: block; height: 100vh; height: 100dvh; }
+    .stage { position: fixed; inset: 0; }
+    .top { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 10px; right: 10px; height: 54px; border-radius: 20px; z-index: 6; padding: 0 6px 0 12px; }
+    .zoom { top: calc(74px + env(safe-area-inset-top)); }
+    .panel { background: var(--g-strong); border-radius: 28px 28px 0 0; }
+    .tabs { margin-top: 6px; }
   }
   @media (max-width: 420px) { .pill { display: none; } }
 </style>
@@ -338,6 +498,7 @@
   </section>
 
   <aside class="panel">
+    <div class="sheet-grab" id="sheetGrab" aria-hidden="true"><span></span></div>
     <div class="tabs" role="tablist">
       <button class="tab on" data-view="vAgent" role="tab">Agent</button>
       <button class="tab" data-view="vCal" role="tab">Calendar</button>
@@ -413,6 +574,14 @@
     <button class="btn primary" style="width:100%;height:42px">Unlock</button>
   </form>
 </div>
+
+<!-- phones: the board stays full screen; one glass mic floats at the bottom -->
+<div class="fab-wrap" id="fabWrap">
+  <div class="caption" id="caption" role="status" aria-live="polite"></div>
+  <button class="fab" id="fab" aria-label="Turn the mic on"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button>
+  <button class="grab-btn" id="openSheet" aria-label="Open chat, calendar and tasks"><span></span>Chat · Calendar · Tasks</button>
+</div>
+<div class="scrim" id="scrim"></div>
 
 <div class="modal viewer" id="viewer"><img id="viewerImg" alt="Full-size image"></div>
 <input type="file" id="imgFile" accept="image/*" multiple hidden>
@@ -495,7 +664,7 @@ function update() {
 /* ================= graph engine (canvas) ================= */
 const canvas = $("#graph"), ctx = canvas.getContext("2d");
 const G = { nodes: [], links: [], byId: {}, cam: { x: 0, y: 0, k: 1 }, target: null, userCam: false, alpha: 1,
-  hover: null, sel: null, drag: null, W: 0, H: 0, dpr: 1, t: 0, fc: 0, orb: "idle", level: 0, first: true };
+  hover: null, sel: null, drag: null, W: 0, H: 0, dpr: 1, t: 0, fc: 0, orb: "idle", level: 0, first: true, ls: 1 };
 const C = {};
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
@@ -511,22 +680,32 @@ const sideColor = s => s === "founder" ? C.founder : C.student;
 const HUB = 290;
 function hubPos(side) {
   const dir = side === "student" ? -1 : 1, wide = G.W >= G.H * .9;
-  return wide ? { x: dir * HUB, y: 0 } : { x: 0, y: dir * HUB * .85 };
+  return wide ? { x: dir * HUB, y: 0 } : { x: 0, y: dir * HUB * .62 }; // upright phones: hubs closer so the map uses the width
 }
 
+function shortLabel(t) { // phones get shorter labels so the whole map fits bigger; tap a task for its full title
+  const max = G.ls > 1 ? 18 : 28;
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + "…" : t;
+}
+function jitter(id, salt) { // deterministic value in [-0.5, 0.5) from a node id
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 10000) / 10000 - .5;
+}
 function build() {
   const keep = G.byId, now = performance.now(), nodes = [], links = [];
   const add = (id, kind, extra, from) => {
     const old = keep[id];
     const n = Object.assign({ id, kind, x: 0, y: 0, vx: 0, vy: 0, born: G.first ? now - 2000 : now }, extra);
     if (old) Object.assign(n, { x: old.x, y: old.y, vx: old.vx, vy: old.vy, born: old.born });
-    else if (from) { n.x = from.x + (Math.random() - .5) * 24; n.y = from.y + (Math.random() - .5) * 24; }
+    else if (from) { n.x = from.x + jitter(id, 1) * 24; n.y = from.y + jitter(id, 2) * 24; } // same start each time, so the map opens the same way
     nodes.push(n); return n;
   };
-  const me = add("me", "me", { r: 46 });
+  const ns = G.ls > 1 ? 1.3 : 1; // phones: bigger circles and text so the map reads at a glance
+  const me = add("me", "me", { r: 46 * ns });
   const hubs = {};
   ["student", "founder"].forEach(s => {
-    const h = add("hub-" + s, "hub", { side: s, r: 38, label: s === "student" ? "Student" : "Founder", parent: me });
+    const h = add("hub-" + s, "hub", { side: s, r: 38 * ns, label: s === "student" ? "Student" : "Founder", parent: me });
     const p = hubPos(s); h.x = p.x; h.y = p.y; hubs[s] = h;
     links.push({ a: me, b: h, seed: Math.random() });
   });
@@ -535,13 +714,13 @@ function build() {
     const cid = "cat-" + it.side + "-" + it.cat;
     let c = cats[cid];
     if (!c) {
-      c = add(cid, "cat", { side: it.side, r: 22, label: it.cat, parent: hubs[it.side] }, hubs[it.side]);
-      cats[cid] = c; links.push({ a: hubs[it.side], b: c, d: 135, seed: Math.random() });
+      c = add(cid, "cat", { side: it.side, r: 22 * ns, label: it.cat, parent: hubs[it.side] }, hubs[it.side]);
+      cats[cid] = c; links.push({ a: hubs[it.side], b: c, d: 135 * G.ls, seed: Math.random() });
     }
-    const n = add(it.id, "item", { side: it.side, item: it, r: 9 + (it.pri || 2) * 2.6, parent: c }, c);
-    ctx.font = `500 12px ${FONT}`; // label width, so the layout can keep labels apart
-    n.lw = Math.max(ctx.measureText(it.text.length > 28 ? it.text.slice(0, 27) + "…" : it.text).width, 70);
-    links.push({ a: c, b: n, d: 90, seed: Math.random() });
+    const n = add(it.id, "item", { side: it.side, item: it, r: (9 + (it.pri || 2) * 2.6) * ns, parent: c }, c);
+    ctx.font = `500 ${12 * G.ls}px ${FONT}`; // label width, so the layout can keep labels apart
+    n.lw = Math.max(ctx.measureText(shortLabel(it.text)).width, 70);
+    links.push({ a: c, b: n, d: 90 * G.ls, seed: Math.random() });
   });
   nodes.forEach(n => {
     if (n.kind === "hub" || n.kind === "cat") {
@@ -560,6 +739,8 @@ function build() {
     if (!G.userCam) fit(true);
   } else G.alpha = Math.max(G.alpha, .9);
   $("#hint").style.display = items.length ? "none" : "";
+  if (!items.length && isMobile() && !capKind) showCaption("hint", "Hi, I'm Zia", "Tap the mic and tell me what you have.", null, true);
+  else if (items.length && capKind === "hint") hideCaption();
 }
 
 function physics() {
@@ -578,10 +759,10 @@ function physics() {
       dx /= d; dy /= d;
       p.vx += dx * f; p.vy += dy * f; q.vx -= dx * f; q.vy -= dy * f;
       if (p.lw && q.lw) { // keep task labels (and their date tags) from overlapping
-        const ox = (p.lw + q.lw) / 2 + 14 - Math.abs(p.x - q.x), oy = 46 - Math.abs(p.y - q.y);
+        const ox = (p.lw + q.lw) / 2 + 14 - Math.abs(p.x - q.x), oy = p.r + q.r + 58 * G.ls - Math.abs(p.y - q.y); // date tag above + label below
         if (ox > 0 && oy > 0) {
-          if (ox < oy) { const s = Math.sign(p.x - q.x) || 1; p.vx += s * ox * .06; q.vx -= s * ox * .06; }
-          else { const s = Math.sign(p.y - q.y) || 1; p.vy += s * oy * .06; q.vy -= s * oy * .06; }
+          if (ox < oy) { const s = Math.sign(p.x - q.x) || 1; p.vx += s * ox * .1; q.vx -= s * ox * .1; }
+          else { const s = Math.sign(p.y - q.y) || 1; p.vy += s * oy * .1; q.vy -= s * oy * .1; }
         }
       }
     }
@@ -597,7 +778,8 @@ function physics() {
     if (n.kind === "hub") { const p = hubPos(n.side); n.x = p.x; n.y = p.y; n.vx = n.vy = 0; return; }
     if (n.kind === "cat") { // fan categories outward, away from "You"
       const p = hubPos(n.side), len = Math.hypot(p.x, p.y) || 1;
-      n.vx += (p.x + p.x / len * 170 - n.x) * .012; n.vy += (p.y + p.y / len * 170 - n.y) * .012;
+      const upright = G.W < G.H * .9, out = (upright ? 120 : 170) * G.ls;
+      n.vx += (p.x + p.x / len * out - n.x) * .012; n.vy += (p.y + p.y / len * out - n.y) * (upright ? .008 : .012);
     }
     if (n.kind === "item") { // items lean away from their hub
       const h = n.parent.parent, dx = n.x - h.x, dy = n.y - h.y, d = Math.hypot(dx, dy) || 1;
@@ -613,19 +795,30 @@ function physics() {
 /* camera */
 const toWorld = (sx, sy) => ({ x: (sx - G.W / 2 - G.cam.x) / G.cam.k, y: (sy - G.H / 2 - G.cam.y) / G.cam.k });
 const toScreen = (wx, wy) => ({ x: G.W / 2 + G.cam.x + wx * G.cam.k, y: G.H / 2 + G.cam.y + wy * G.cam.k });
+// The board fills the window and the glass bar/panel/mic float over it,
+// so fit and focus aim at the uncovered part of the board.
+function boardInsets() {
+  if (isMobile()) { const top = $(".top").getBoundingClientRect(); return { t: top.bottom + 12, r: 0, b: 160, l: 0 }; }
+  const top = $(".top").getBoundingClientRect(), pan = $(".panel").getBoundingClientRect();
+  return { t: top.bottom + 10, r: Math.max(0, G.W - pan.left + 12), b: 16, l: 0 };
+}
 function fit(instant, nodes = G.nodes) {
   if (!G.W || !nodes.length) return;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   nodes.forEach(n => {
-    const px = n.r + (n.kind === "item" ? 70 : 40), py = n.r + (n.kind === "item" ? 44 : 30);
+    const px = n.r + (n.kind === "item" ? Math.max(70, (n.lw || 0) / 2 + 10) : 40), py = n.r + (n.kind === "item" ? 44 * G.ls : 30);
     x0 = Math.min(x0, n.x - px); x1 = Math.max(x1, n.x + px); y0 = Math.min(y0, n.y - py); y1 = Math.max(y1, n.y + py);
   });
   if (nodes === G.nodes) images.forEach(im => {
     const p = imgPos(im), s = imgSize(im);
     x0 = Math.min(x0, p.x - s.w / 2 - 20); x1 = Math.max(x1, p.x + s.w / 2 + 20); y0 = Math.min(y0, p.y - s.h / 2 - 20); y1 = Math.max(y1, p.y + s.h / 2 + 20);
   });
-  const k = Math.max(.3, Math.min(G.W / (x1 - x0), G.H / (y1 - y0), 1.35) * .94);
-  const t = { k, x: -(x0 + x1) / 2 * k, y: -(y0 + y1) / 2 * k };
+  // on phones keep the board clear of the top buttons and the floating mic
+  const pad = boardInsets();
+  let k = Math.max(.3, Math.min((G.W - pad.l - pad.r) / (x1 - x0), (G.H - pad.t - pad.b) / (y1 - y0), 1.35) * .94);
+  if (isMobile() && !fit.all) k = Math.max(k, .52); // phones: keep text readable (~9-10px); drag to see the edges
+  fit.all = false;
+  const t = { k, x: -(x0 + x1) / 2 * k + (pad.l - pad.r) / 2, y: -(y0 + y1) / 2 * k + (pad.t - pad.b) / 2 };
   if (instant) { G.cam = t; G.target = null; } else G.target = t;
 }
 function zoomAt(sx, sy, f) {
@@ -638,7 +831,7 @@ function nodeAt(sx, sy) {
   let best = null, bd = Infinity;
   for (const n of G.nodes) {
     const d = Math.hypot(n.x - p.x, n.y - p.y);
-    if (d < n.r + 6 / G.cam.k && d < bd) { bd = d; best = n; }
+    if (d < n.r + (isMobile() ? 16 : 6) / G.cam.k && d < bd) { bd = d; best = n; } // bigger tap targets for fingers
   }
   return best;
 }
@@ -658,7 +851,7 @@ function roundRect(x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 function easeBack(x) { const c = 1.70158, c3 = c + 1; return 1 + c3 * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); }
-const FONT = "Inter, system-ui, sans-serif";
+const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
 
 function draw() {
   const { W, H, dpr, cam } = G, k = cam.k, now = performance.now();
@@ -749,21 +942,19 @@ function drawNode(n, faded, now) {
   if (n.kind === "me") drawOrb(r);
   else if (n.kind === "hub") {
     const col = sideColor(n.side);
-    ctx.fillStyle = C["surface-solid"]; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7); ctx.fill();
-    ctx.lineWidth = 1.5; ctx.strokeStyle = C.line2; ctx.stroke();
+    glassDisc(n.x, n.y, r);
     // completion ring: track + progress
     ctx.lineWidth = 3; ctx.strokeStyle = C.line; ctx.beginPath(); ctx.arc(n.x, n.y, r + 5, 0, 7); ctx.stroke();
     const pct = n.total ? (n.total - n.open) / n.total : 0;
     if (pct > 0) { ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(n.x, n.y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct); ctx.stroke(); }
-    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(n.x, n.y - 15, 3, 0, 7); ctx.fill();
-    ctx.fillStyle = C.ink; ctx.font = `600 13px ${FONT}`; ctx.fillText(n.label, n.x, n.y + 1);
-    ctx.fillStyle = C.ink3; ctx.font = `500 11px ${FONT}`; ctx.fillText(n.open + " open", n.x, n.y + 16);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(n.x, n.y - 15 * r / 38, 3 * r / 38, 0, 7); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.font = `600 ${13 * r / 38}px ${FONT}`; ctx.fillText(n.label, n.x, n.y + r / 38);
+    ctx.fillStyle = C.ink3; ctx.font = `500 ${11 * r / 38}px ${FONT}`; ctx.fillText(n.open + " open", n.x, n.y + 16 * r / 38);
   } else if (n.kind === "cat") {
     const col = sideColor(n.side);
-    ctx.fillStyle = C["surface-solid"]; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7); ctx.fill();
-    ctx.lineWidth = 1.5; ctx.strokeStyle = n.open ? rgba(col, .7) : C.line2; ctx.stroke();
-    ctx.fillStyle = n.open ? col : C.ink3; ctx.font = `600 12px ${FONT}`; ctx.fillText(String(n.open), n.x, n.y + .5);
-    haloText(n.label, n.x, n.y + r + 13, `500 12px ${FONT}`, C.ink2);
+    glassDisc(n.x, n.y, r, n.open ? rgba(col, .7) : null);
+    ctx.fillStyle = n.open ? col : C.ink3; ctx.font = `600 ${12 * r / 22}px ${FONT}`; ctx.fillText(String(n.open), n.x, n.y + .5);
+    haloText(n.label, n.x, n.y + r + 13 * G.ls, `500 ${12 * G.ls}px ${FONT}`, C.ink2);
   } else {
     const it = n.item, u = urgency(it), col = it.done ? C.line2 : sideColor(it.side);
     if (u) { ctx.strokeStyle = u === "over" ? C.danger : C.warn; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(n.x, n.y, r + 4, 0, 7); ctx.stroke(); }
@@ -777,6 +968,18 @@ function drawNode(n, faded, now) {
   }
   ctx.globalAlpha = 1;
 }
+function glassDisc(x, y, r, edge) { // frosted disc: translucent fill, soft drop shadow, bright top rim
+  ctx.save();
+  ctx.shadowColor = "rgba(16,24,40,.16)"; ctx.shadowBlur = r * .5; ctx.shadowOffsetY = r * .12;
+  ctx.fillStyle = rgba(C["surface-solid"], .78); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.restore();
+  const sheen = ctx.createLinearGradient(x, y - r, x, y + r);
+  sheen.addColorStop(0, "rgba(255,255,255,.55)"); sheen.addColorStop(.5, "rgba(255,255,255,0)");
+  ctx.fillStyle = sheen; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.lineWidth = 1.2; ctx.strokeStyle = edge || rgba(C.ink3, .35); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y, r - 1.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+}
 function haloText(txt, x, y, font, color) { // text with a background-coloured outline, like map labels
   ctx.font = font; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineJoin = "round"; ctx.lineWidth = 4; ctx.strokeStyle = C.bg; ctx.strokeText(txt, x, y);
@@ -785,10 +988,10 @@ function haloText(txt, x, y, font, color) { // text with a background-coloured o
 
 function drawItemLabel(n, faded, now) {
   const it = n.item, focus = G.hover === n || G.sel === n.id;
-  if (!(G.cam.k >= .55 || focus || urgency(it) === "over")) return;
+  if (!(G.cam.k * G.ls >= (isMobile() ? .42 : .55) || focus || urgency(it) === "over")) return;
   if (now - n.born < 300) return;
-  const txt = it.text.length > 28 ? it.text.slice(0, 27) + "…" : it.text;
-  const y = n.y + n.r + 14, font = `${focus ? 600 : 500} 12px ${FONT}`;
+  const txt = shortLabel(it.text);
+  const y = n.y + n.r + 14 * G.ls, font = `${focus ? 600 : 500} ${12 * G.ls}px ${FONT}`;
   ctx.globalAlpha = faded ? .2 : 1;
   haloText(txt, n.x, y, font, it.done ? C.ink3 : C.ink);
   if (it.done) { const tw = ctx.measureText(txt).width; ctx.strokeStyle = C.ink3; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(n.x - tw / 2, y + 1); ctx.lineTo(n.x + tw / 2, y + 1); ctx.stroke(); }
@@ -806,8 +1009,9 @@ function dueShort(due) {
 }
 function drawDueBadge(n, it) { // small date bubble sitting on top of the node
   const u = urgency(it), txt = dueShort(it.due);
-  ctx.font = `500 10.5px ${FONT}`;
-  const w = ctx.measureText(txt).width + 12, h = 17, x = n.x - w / 2, y = n.y - n.r - (u ? 10 : 6) - h;
+  const s = G.ls;
+  ctx.font = `500 ${10.5 * s}px ${FONT}`;
+  const w = ctx.measureText(txt).width + 12 * s, h = 17 * s, x = n.x - w / 2, y = n.y - n.r - (u ? 10 : 6) - h;
   const col = u === "over" ? C.danger : u === "soon" ? C.warn : null;
   ctx.fillStyle = C["surface-solid"]; roundRect(x, y, w, h, 4); ctx.fill();
   ctx.strokeStyle = col ? rgba(col, .45) : C.line2; ctx.lineWidth = 1; ctx.stroke();
@@ -838,8 +1042,16 @@ function drawOrb(r) {
     }
     ctx.lineCap = "butt";
   }
+  ctx.save(); // glossy glass "You" node
+  ctx.shadowColor = rgba(C.accent, .35); ctx.shadowBlur = R * .6; ctx.shadowOffsetY = R * .15;
   ctx.fillStyle = C.accent; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = `600 14px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.restore();
+  const gloss = ctx.createLinearGradient(0, -R, 0, R);
+  gloss.addColorStop(0, "rgba(255,255,255,.42)"); gloss.addColorStop(.48, "rgba(255,255,255,.06)"); gloss.addColorStop(1, "rgba(0,0,0,.10)");
+  ctx.fillStyle = gloss; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(0, 0, R - 1.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = `600 ${14 * r / 46}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("You", 0, 1);
 }
 
@@ -864,6 +1076,8 @@ function resize() {
   G.W = r.width; G.H = r.height; G.dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(r.width * G.dpr); canvas.height = Math.round(r.height * G.dpr);
   G.alpha = Math.max(G.alpha, .5);
+  const ls = isMobile() ? 1.45 : 1; // bigger labels on phones so they stay readable
+  if (ls !== G.ls) { G.ls = ls; if (G.nodes.length) { G.first = true; build(); } }
   if (!G.userCam) fit(true);
 }
 
@@ -934,12 +1148,14 @@ function focusNode(id) {
   const n = G.byId[id];
   if (!n) return;
   G.sel = id; G.selImg = null; showCard(n);
-  const k = Math.max(G.cam.k, 1.1);
-  G.target = { k, x: -n.x * k, y: -n.y * k }; G.userCam = true;
+  if (isMobile()) closeSheet(); // show the node itself on phones
+  const pad = boardInsets(), k = Math.max(G.cam.k, isMobile() ? .9 : 1.1);
+  const lift = isMobile() ? -G.H * .18 : 0; // phones: keep it above the bottom card
+  G.target = { k, x: -n.x * k + (pad.l - pad.r) / 2, y: -n.y * k + (pad.t - pad.b) / 2 + lift }; G.userCam = true;
 }
 $("#zIn").onclick = () => zoomAt(G.W / 2, G.H / 2, 1.25);
 $("#zOut").onclick = () => zoomAt(G.W / 2, G.H / 2, .8);
-$("#zFit").onclick = () => { G.userCam = false; fit(false); };
+$("#zFit").onclick = () => { G.userCam = true; fit.all = true; fit(false); }; // show everything, even if small
 
 /* node card */
 function showCard(n) {
@@ -966,6 +1182,7 @@ function hideCard() { $("#card").classList.remove("on"); }
 function positionCard() {
   const card = $("#card");
   if (!card.classList.contains("on")) return;
+  if (isMobile()) { card.style.left = card.style.top = ""; return; } // phones: card docks at the bottom (CSS)
   let wx, wy, half;
   const im = G.selImg && images.find(i => i.id === G.selImg), n = !im && G.sel && G.byId[G.sel];
   if (im) { const q = imgPos(im); wx = q.x; wy = q.y; half = imgSize(im).w / 2 + 6; }
@@ -973,8 +1190,9 @@ function positionCard() {
   else return;
   const p = toScreen(wx, wy), cw = card.offsetWidth, ch = card.offsetHeight;
   let x = p.x + half * G.cam.k + 16, y = p.y - ch / 2;
-  if (x + cw > G.W - 10) x = p.x - half * G.cam.k - 16 - cw;
-  x = Math.max(10, Math.min(G.W - cw - 10, x));
+  const right = G.W - boardInsets().r; // never slide under the floating panel
+  if (x + cw > right - 10) x = p.x - half * G.cam.k - 16 - cw;
+  x = Math.max(10, Math.min(right - cw - 10, x));
   y = Math.max(10, Math.min(G.H - ch - 10, y));
   card.style.left = x + "px"; card.style.top = y + "px";
 }
@@ -1372,6 +1590,7 @@ async function runCommand(text) {
   busy = true;
   pauseListening();
   chat.push({ role: "user", text, t: Date.now() });
+  showCaption("you", "You", text, null, true);
   renderChat(); showTyping(true); setOrb("thinking");
   let res = null;
   if (AI.ok) { try { res = await askAI(text); } catch (e) { res = null; } }
@@ -1381,6 +1600,7 @@ async function runCommand(text) {
   const reply = String(res.reply || (chips.length ? "Done." : "Okay."));
   chat.push({ role: "agent", text: reply, chips, t: Date.now() });
   showTyping(false); update(); renderChat();
+  showCaption("reply", "Zia", reply, chips);
   if (chips.length) toast(chips.length === 1 ? chips[0].label : chips.length + " changes made", () => { items = JSON.parse(before); update(); });
   busy = false;
   speak(reply);
@@ -1422,6 +1642,7 @@ let typing = false, interimText = "";
 function showTyping(on) { typing = on; renderChat(); }
 function showInterim(t) {
   interimText = t;
+  if (t) showCaption("you", "You", t, null, true);
   const box = $("#msgs"), last = box.querySelector(".interim");
   if (last && t) { last.textContent = t; box.scrollTop = box.scrollHeight; } else renderChat();
 }
@@ -1432,11 +1653,67 @@ $("#composer").addEventListener("submit", e => {
   runCommand(v);
 });
 
+/* ================= phones: floating glass mic, captions, bottom sheet ================= */
+const isMobile = () => window.matchMedia("(max-width: 860px)").matches;
+let capTimer = null, capKind = "";
+function showCaption(kind, label, text, chips, sticky) { // what you said / what Zia answered, floating above the mic
+  if (!isMobile() || document.body.classList.contains("sheet-open")) return;
+  const c = $("#caption");
+  c.replaceChildren(el("small", null, label), el("div", null, text));
+  if (chips && chips.length) { const ch = msgEl({ role: "agent", text: "", chips }).querySelector(".chips"); if (ch) c.append(ch); }
+  c.classList.add("on"); capKind = kind;
+  clearTimeout(capTimer);
+  if (!sticky) capTimer = setTimeout(hideCaption, 10000);
+}
+function hideCaption() { clearTimeout(capTimer); capKind = ""; $("#caption").classList.remove("on"); }
+$("#caption").onclick = e => { if (!e.target.closest(".achip")) openSheet("vAgent"); };
+
+function openSheet(tab) {
+  if (tab) switchTab(tab);
+  if (document.body.classList.contains("sheet-open")) return;
+  document.body.classList.add("sheet-open");
+  hideCaption(); renderChat();
+  try { history.pushState({ ziaSheet: 1 }, ""); } catch (e) {} // so Android's back button closes the sheet
+}
+function closeSheet(fromBack) {
+  if (!document.body.classList.contains("sheet-open")) return;
+  document.body.classList.remove("sheet-open");
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (!fromBack && history.state && history.state.ziaSheet) history.back();
+}
+window.addEventListener("popstate", () => closeSheet(true));
+$("#openSheet").onclick = () => openSheet();
+$("#scrim").onclick = () => closeSheet();
+$("#fab").onclick = () => session ? endSession() : startSession();
+(function sheetSwipes() { // swipe up from the mic area to open, swipe the sheet's top down to close
+  let up = null;
+  $("#fabWrap").addEventListener("touchstart", e => { up = e.touches[0].clientY; }, { passive: true });
+  $("#fabWrap").addEventListener("touchend", e => { if (up !== null && up - e.changedTouches[0].clientY > 50) openSheet(); up = null; });
+  const panel = document.querySelector(".panel");
+  let sy = null, dy = 0;
+  const start = e => { if (!isMobile()) return; sy = e.touches[0].clientY; dy = 0; panel.classList.add("dragging"); };
+  const move = e => { if (sy === null) return; dy = Math.max(0, e.touches[0].clientY - sy); panel.style.transform = `translateY(${dy}px)`; };
+  const end = () => { if (sy === null) return; panel.classList.remove("dragging"); panel.style.transform = ""; if (dy > 90) closeSheet(); sy = null; };
+  [$("#sheetGrab"), document.querySelector(".tabs")].forEach(h => {
+    h.addEventListener("touchstart", start, { passive: true });
+    h.addEventListener("touchmove", move, { passive: true });
+    h.addEventListener("touchend", end);
+  });
+})();
+
 /* ================= voice ================= */
 function setOrb(s) {
   G.orb = s;
   $("#agentState").textContent = { idle: "Ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking…" }[s];
   $("#miniOrb").className = "mini-orb " + s;
+  const fab = $("#fab");
+  fab.classList.toggle("busy", s === "thinking");
+  fab.classList.toggle("talk", s === "speaking");
+  if (s === "listening") {
+    const cap = $("#caption");
+    if (capKind === "reply" && cap.classList.contains("on")) cap.querySelector("small").textContent = "Zia · listening"; // keep the reply readable
+    else showCaption("listen", "Listening…", "Say what you have, or ask “what's due?”", null, true);
+  }
 }
 let voice = null;
 function pickVoice() {
@@ -1474,11 +1751,13 @@ function afterSpeak() {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, session = false, recActive = false, heard = "", flushTimer = null, restarts = [];
 function setMicUI() {
-  const m = $("#mic");
-  m.classList.toggle("on", session);
-  m.title = session ? "Mic is on. Tap to turn it off" : "Turn the mic on";
-  m.setAttribute("aria-label", m.title);
-  m.setAttribute("aria-pressed", String(session));
+  [$("#mic"), $("#fab")].forEach(m => {
+    m.classList.toggle("on", session);
+    m.title = session ? "Mic is on. Tap to turn it off" : "Turn the mic on";
+    m.setAttribute("aria-label", m.title);
+    m.setAttribute("aria-pressed", String(session));
+  });
+  if (!session && capKind === "listen") hideCaption();
 }
 function startSession() {
   if (!SR) { toast("Voice needs Chrome or Edge. You can still type."); return; }
