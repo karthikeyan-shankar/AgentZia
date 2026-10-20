@@ -1,0 +1,5 @@
+.env
+krefter_store.json
+krefter_store.json.tmp
+__pycache__/
+uploads/
