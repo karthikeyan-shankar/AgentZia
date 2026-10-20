@@ -72,7 +72,7 @@
     --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
     color-scheme: dark;
   }
-  .stage.dragging::after { content: "Drop the image here. Drop it on a task to attach it."; position: absolute; inset: 12px; border: 2px dashed var(--accent); border-radius: 14px; display: grid; place-items: center; color: var(--accent); font-weight: 600; background: var(--accent-soft); pointer-events: none; z-index: 6; }
+  .stage.dragging::after { content: "Drop photos, PDFs or links. Drop on a task to attach them there."; position: absolute; inset: 12px; border: 2px dashed var(--accent); border-radius: 14px; display: grid; place-items: center; color: var(--accent); font-weight: 600; background: var(--accent-soft); pointer-events: none; z-index: 6; }
   .viewer { background: rgba(9,9,11,.82); cursor: zoom-out; }
   .viewer img { max-width: 92vw; max-height: 86vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); background: #fff; }
   .menu h6 { margin: 4px 8px 4px; font-size: 11px; font-weight: 600; color: var(--ink3); }
@@ -495,19 +495,6 @@
   @keyframes island { from { transform: scale(.3, .55); opacity: 0; } 55% { opacity: 1; } }
   @keyframes islandOut { to { transform: scale(.35, .55); opacity: 0; } }
 
-  /* Siri-style edge glow while Zia listens, thinks or speaks */
-  @property --siri-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-  .siri { position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: 0; transition: opacity .6s ease; }
-  .siri::before, .siri::after { content: ""; position: absolute; inset: 0; padding: 3px;
-    background: conic-gradient(from var(--siri-a), #4f8cff, #a35cff, #ff5c8a, #ffa64d, #4fd8c4, #4f8cff);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
-    animation: siriSpin 5s linear infinite; }
-  .siri::after { padding: 12px; filter: blur(16px); opacity: .75; }
-  body[data-agent="listening"] .siri, body[data-agent="thinking"] .siri, body[data-agent="speaking"] .siri { opacity: 1; }
-  body[data-agent="thinking"] .siri::before, body[data-agent="thinking"] .siri::after { animation-duration: 1.6s; }
-  @keyframes siriSpin { to { --siri-a: 360deg; } }
-
   /* the glass mic stretches into a capsule with a live waveform while listening */
   .fab { transition: width .55s var(--spring), border-radius .55s var(--spring), transform .3s var(--spring), background .3s, color .3s; }
   .fab .wave { display: none; gap: 3px; align-items: center; height: 24px; margin-left: 10px; }
@@ -538,12 +525,10 @@
     .scrim { transition: opacity .45s var(--sheet-ease); }
     .toasts { top: calc(13px + env(safe-area-inset-top)); z-index: 40; max-width: 64vw; }
     .toast { font-size: 13px; padding: 7px 7px 7px 14px; }
-    .siri::before { padding: 4px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
-    .siri { display: none; }
   }
 </style>
 </head>
@@ -576,7 +561,8 @@
     <div class="legend"><span><i style="background:var(--student)"></i>Student</span><span><i style="background:var(--founder)"></i>Founder</span><span><i style="border:2px solid var(--danger)"></i>Overdue</span><span><i style="border:2px solid var(--warn)"></i>Due soon</span></div>
     <div class="hint" id="hint">Press <kbd>Space</kbd> to turn on the mic, then just talk. I'll keep listening.</div>
     <div class="zoom">
-      <button id="zImg" title="Add an image (or paste with Ctrl+V)" aria-label="Add image"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg></button>
+      <button id="zImg" title="Pin a photo or PDF (or paste with Ctrl+V)" aria-label="Pin a photo or PDF"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
+      <button id="zLink" title="Pin a link" aria-label="Pin a link"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg></button>
       <button id="zIn" title="Zoom in" aria-label="Zoom in"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="zOut" title="Zoom out" aria-label="Zoom out"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
       <button id="zFit" title="Fit everything (F)" aria-label="Fit view"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
@@ -669,10 +655,18 @@
   <button class="grab-btn" id="openSheet" aria-label="Open chat, calendar and tasks"><span></span>Chat · Calendar · Tasks</button>
 </div>
 <div class="scrim" id="scrim"></div>
-<div class="siri" aria-hidden="true"></div>
+
+<div class="modal" id="linkModal">
+  <form class="sheet" id="linkForm" style="max-width:420px">
+    <h3>Pin a link</h3>
+    <div class="f"><label for="linkUrl">Web address</label><input class="inp" id="linkUrl" type="text" inputmode="url" placeholder="https://…" autocomplete="off" spellcheck="false"></div>
+    <p class="muted" id="linkHint" style="margin:-4px 0 14px;font-size:12.5px"></p>
+    <div class="foot"><span class="sp"></span><button type="button" class="btn" id="linkCancel">Cancel</button><button class="btn primary">Pin link</button></div>
+  </form>
+</div>
 
 <div class="modal viewer" id="viewer"><img id="viewerImg" alt="Full-size image"></div>
-<input type="file" id="imgFile" accept="image/*" multiple hidden>
+<input type="file" id="imgFile" accept="image/*,application/pdf,.pdf" multiple hidden>
 
 <div class="toasts" id="toasts"></div>
 
@@ -994,19 +988,28 @@ function draw() {
   G.nodes.forEach(n => { if (n.kind === "item") drawItemLabel(n, fs && !fs.has(n.id), now); });
 }
 
-/* images pinned on the board */
+/* things pinned on the board: photos, PDFs and links (kept in `images` so older saves still load) */
 const imgCache = {};
-function imgEl(im) {
-  let c = imgCache[im.id];
-  if (!c || c.dataset.src !== im.src) { c = new Image(); c.dataset.src = im.src; c.src = im.src; imgCache[im.id] = c; }
+const kindOf = im => im.kind || "image";
+function imgEl(src) {
+  if (!src) return null;
+  let c = imgCache[src];
+  if (!c) { c = new Image(); c.decoding = "async"; c.src = src; imgCache[src] = c; }
   return c;
 }
-function imgPos(im) { // attached images ride along with their node
+const loaded = img => img && img.complete && img.naturalWidth > 0;
+function imgPos(im) { // attached things ride along with their node
   const n = im.attach && G.byId[im.attach];
   if (n) return { x: n.x + im.dx, y: n.y + im.dy };
   return im.attach ? { x: im.lastX || 0, y: im.lastY || 0 } : { x: im.x, y: im.y };
 }
-function imgSize(im) { const w = im.size || 170; return { w, h: w * (im.h / im.w || .75) }; }
+function imgSize(im) { // size of the floating card on the board
+  const k = kindOf(im);
+  if (k === "link") { const w = im.size || 230; return { w, h: w * (im.image ? .8 : .44) }; }
+  if (k === "pdf") { const w = im.size || 160; return { w, h: w * ((im.h / im.w) || 1.3) + 30 }; }
+  const w = im.size || 170;
+  return { w, h: w * (im.h / im.w || .75) };
+}
 function imageAt(sx, sy) {
   const p = toWorld(sx, sy);
   for (let i = images.length - 1; i >= 0; i--) {
@@ -1014,6 +1017,17 @@ function imageAt(sx, sy) {
     if (Math.abs(p.x - c.x) <= s.w / 2 + 6 && Math.abs(p.y - c.y) <= s.h / 2 + 6) return im;
   }
   return null;
+}
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return String(u || ""); } }
+function fitText(txt, maxW) { // trim to fit a width, with an ellipsis
+  if (ctx.measureText(txt).width <= maxW) return txt;
+  let t = txt;
+  while (t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+  return t + "…";
+}
+function drawCover(img, x, y, w, h) { // like CSS object-fit: cover
+  const r = Math.max(w / img.naturalWidth, h / img.naturalHeight), sw = w / r, sh = h / r;
+  ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
 }
 function drawImages(fs) {
   images.forEach(im => { // dotted connectors first, so cards sit on top
@@ -1025,21 +1039,58 @@ function drawImages(fs) {
     ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.setLineDash([]);
   });
   images.forEach(im => {
-    const p = imgPos(im), s = imgSize(im), x = p.x - s.w / 2, y = p.y - s.h / 2, sel = G.selImg === im.id;
+    const p = imgPos(im), s = imgSize(im), x = p.x - s.w / 2, y = p.y - s.h / 2, sel = G.selImg === im.id, k = kindOf(im);
     if (im.attach && G.byId[im.attach]) { im.lastX = p.x; im.lastY = p.y; }
     ctx.globalAlpha = fs && !(im.attach && fs.has(im.attach)) ? .3 : 1;
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,.16)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
-    ctx.fillStyle = C["surface-solid"]; roundRect(x - 5, y - 5, s.w + 10, s.h + 10, 8); ctx.fill();
+    ctx.shadowColor = "rgba(0,0,0,.16)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
+    ctx.fillStyle = C["surface-solid"]; roundRect(x - 5, y - 5, s.w + 10, s.h + 10, 10); ctx.fill();
     ctx.restore();
     ctx.strokeStyle = sel ? C.accent : C.line2; ctx.lineWidth = sel ? 2 : 1;
-    roundRect(x - 5, y - 5, s.w + 10, s.h + 10, 8); ctx.stroke();
-    const img = imgEl(im);
-    if (img.complete && img.naturalWidth) {
-      ctx.save(); roundRect(x, y, s.w, s.h, 5); ctx.clip(); ctx.drawImage(img, x, y, s.w, s.h); ctx.restore();
-    } else { ctx.fillStyle = C.elev; roundRect(x, y, s.w, s.h, 5); ctx.fill(); }
+    roundRect(x - 5, y - 5, s.w + 10, s.h + 10, 10); ctx.stroke();
+    if (k === "pdf") drawPdf(im, x, y, s);
+    else if (k === "link") drawLink(im, x, y, s);
+    else {
+      const img = imgEl(im.src);
+      if (loaded(img)) { ctx.save(); roundRect(x, y, s.w, s.h, 6); ctx.clip(); ctx.drawImage(img, x, y, s.w, s.h); ctx.restore(); }
+      else { ctx.fillStyle = C.elev; roundRect(x, y, s.w, s.h, 6); ctx.fill(); }
+    }
     ctx.globalAlpha = 1;
   });
+}
+function drawPdf(im, x, y, s) { // first page preview + a red PDF badge and the file name
+  const strip = 30, ph = s.h - strip, th = imgEl(im.thumb);
+  ctx.save(); roundRect(x, y, s.w, ph, 6); ctx.clip();
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(x, y, s.w, ph);
+  if (loaded(th)) drawCover(th, x, y, s.w, ph);
+  else { ctx.fillStyle = "#e4e6eb"; for (let i = 0; i < 7; i++) ctx.fillRect(x + 16, y + 22 + i * 16, s.w - 32 - (i % 3) * 16, 6); }
+  ctx.restore();
+  ctx.fillStyle = "#e5484d"; roundRect(x + 2, y + ph + 7, 30, 16, 4); ctx.fill();
+  ctx.fillStyle = "#ffffff"; ctx.font = `700 9px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("PDF", x + 17, y + ph + 15.5);
+  ctx.fillStyle = C.ink; ctx.font = `500 11px ${FONT}`; ctx.textAlign = "left";
+  ctx.fillText(fitText(im.name || "Document.pdf", s.w - 42), x + 38, y + ph + 15.5);
+}
+function drawLink(im, x, y, s) { // a tiny browser window: traffic lights, site, preview, title, address
+  const bar = 22, host = hostOf(im.url);
+  ctx.fillStyle = C.elev; roundRect(x, y, s.w, bar, 6); ctx.fill();
+  ["#ff5f57", "#febc2e", "#28c840"].forEach((c, i) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + 11 + i * 11, y + bar / 2, 3.6, 0, 7); ctx.fill(); });
+  ctx.fillStyle = C.ink3; ctx.font = `500 10px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(fitText(host, s.w - 96), x + s.w / 2 + 16, y + bar / 2 + .5);
+  let cy = y + bar + 4;
+  if (im.image) {
+    const ih = s.h - bar - 4 - 42, og = imgEl(im.image);
+    ctx.save(); roundRect(x, cy, s.w, ih, 5); ctx.clip();
+    ctx.fillStyle = C.elev; ctx.fillRect(x, cy, s.w, ih);
+    if (loaded(og)) drawCover(og, x, cy, s.w, ih);
+    ctx.restore();
+    cy += ih + 4;
+  } else cy += 4;
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.ink; ctx.font = `600 12px ${FONT}`;
+  ctx.fillText(fitText(im.title || host, s.w - 12), x + 6, cy + 10);
+  ctx.fillStyle = C.accent; ctx.font = `500 10.5px ${FONT}`;
+  ctx.fillText(fitText(im.url.replace(/^https?:\/\//, "").replace(/\/$/, ""), s.w - 12), x + 6, cy + 27);
 }
 
 function drawNode(n, faded, now) {
@@ -1301,10 +1352,13 @@ function showCard(n) {
   const d = el("button", "btn primary grow", it.done ? "Reopen" : "Mark done"); d.onclick = () => toggleDone(it.id);
   const e = el("button", "btn", "Edit"); e.onclick = () => openEditor(it.id);
   const x = el("button", "btn danger", "Delete"); x.onclick = () => removeItem(it.id);
-  const pic = el("button", "btn"); pic.title = "Attach an image to this task"; pic.setAttribute("aria-label", pic.title);
-  pic.innerHTML = '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>';
+  const pic = el("button", "btn"); pic.title = "Attach a photo or PDF to this task"; pic.setAttribute("aria-label", pic.title);
+  pic.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg>';
   pic.onclick = () => pickImages(n);
-  acts.append(d, e, pic, x); card.append(acts);
+  const lnk = el("button", "btn"); lnk.title = "Attach a link to this task"; lnk.setAttribute("aria-label", lnk.title);
+  lnk.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg>';
+  lnk.onclick = () => askLink(n);
+  acts.append(d, e, pic, lnk, x); card.append(acts);
   card.classList.add("on");
   positionCard();
 }
@@ -1327,21 +1381,26 @@ function positionCard() {
   card.style.left = x + "px"; card.style.top = y + "px";
 }
 
-/* image card + adding/removing images */
+/* attachment card + adding/removing photos, PDFs and links */
+const nodeName = t => t.item ? t.item.text : t.kind === "me" ? "You" : t.label;
+const KIND_LABEL = { image: "Photo", pdf: "PDF", link: "Link" };
 function selectImage(im) {
   G.selImg = im.id; G.sel = null;
-  const card = $("#card"), owner = im.attach && G.byId[im.attach];
+  const card = $("#card"), owner = im.attach && G.byId[im.attach], k = kindOf(im);
   card.replaceChildren();
-  card.append(el("h4", null, "Image"));
+  card.append(el("h4", null, k === "pdf" ? (im.name || "PDF") : k === "link" ? (im.title || hostOf(im.url)) : "Photo"));
   const tags = el("div", "tags");
-  tags.append(el("span", "tag", owner ? "Attached to " + (owner.item ? owner.item.text : owner.kind === "me" ? "You" : owner.label) : "On the board"));
+  tags.append(el("span", "tag", k === "link" ? hostOf(im.url) : k === "pdf" && im.pages ? `PDF · ${im.pages} page${im.pages > 1 ? "s" : ""}` : KIND_LABEL[k]),
+    el("span", "tag", owner ? "On " + nodeName(owner) : "On the board"));
   card.append(tags);
+  if (k === "link" && im.desc) { const d = el("p", null, im.desc); d.style.cssText = "margin:10px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.45"; card.append(d); }
   const acts = el("div", "acts");
-  const open = el("button", "btn primary grow", "Open"); open.onclick = () => openViewer(im);
+  const open = el("button", "btn primary grow", "Open");
+  open.onclick = () => k === "image" ? openViewer(im) : window.open(k === "pdf" ? im.src : im.url, "_blank", "noopener");
   const smaller = el("button", "btn", "−"); smaller.title = "Smaller"; smaller.setAttribute("aria-label", "Smaller");
-  smaller.onclick = () => { im.size = Math.max(90, (im.size || 170) - 40); persist(); };
+  smaller.onclick = () => { im.size = Math.max(100, (im.size || imgSize(im).w) - 40); persist(); };
   const bigger = el("button", "btn", "+"); bigger.title = "Bigger"; bigger.setAttribute("aria-label", "Bigger");
-  bigger.onclick = () => { im.size = Math.min(520, (im.size || 170) + 40); persist(); };
+  bigger.onclick = () => { im.size = Math.min(520, (im.size || imgSize(im).w) + 40); persist(); };
   const del = el("button", "btn danger", "Delete"); del.onclick = () => removeImage(im.id);
   acts.append(open, smaller, bigger);
   if (owner) {
@@ -1373,26 +1432,25 @@ function downscale(file, max) { // shrink big photos so the board stays fast and
   });
 }
 const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
-
-async function addImageFile(file, opts = {}) {
-  if (!file || !/^image\//.test(file.type)) return;
-  let shrunk;
-  try { shrunk = await downscale(file, 1280); } catch (e) { toast("Couldn't read that image."); return; }
-  let src = null;
+async function uploadBlob(blob, type) { // server copy when online; otherwise kept inside this browser
   if (SERVER && serverReady) {
     try {
-      const r = await fetch("/api/upload", { method: "POST", headers: Object.assign({ "Content-Type": "image/jpeg" }, passKey ? { "X-Zia-Key": passKey } : {}), body: shrunk.blob });
-      if (r.ok) src = (await r.json()).url;
+      const r = await fetch("/api/upload", { method: "POST", headers: Object.assign({ "Content-Type": type }, passKey ? { "X-Zia-Key": passKey } : {}), body: blob });
+      if (r.ok) return (await r.json()).url;
+      if (r.status === 413) { toast("That file is too big (20 MB max)."); return null; }
     } catch (e) {}
   }
-  if (!src) src = await blobToDataURL(shrunk.blob);
+  return blobToDataURL(blob);
+}
+
+function placeAttachment(im, opts = {}) { // pin next to the target node (fanning out) or where it was dropped
   const target = opts.target !== undefined ? opts.target : (G.sel && G.byId[G.sel]) || null;
-  const im = { id: uid(), src, w: shrunk.w, h: shrunk.h, size: 170, attach: null, dx: 0, dy: 0, x: 0, y: 0, created: Date.now() };
-  if (target) { // place it just outside the node, fanning out if the node already has pictures
+  Object.assign(im, { attach: null, dx: 0, dy: 0, x: 0, y: 0, created: Date.now() });
+  if (target) {
     const base = target.parent || { x: 0, y: 0 }, vx = target.x - base.x, vy = target.y - base.y;
     const count = images.filter(i => i.attach === target.id).length;
-    const ang = (vx || vy ? Math.atan2(vy, vx) : -Math.PI / 2) + (count % 2 ? 1 : -1) * .6 * Math.ceil(count / 2);
-    const dist = target.r + 40 + imgSize(im).w * .55;
+    const ang = (vx || vy ? Math.atan2(vy, vx) : -Math.PI / 2) + (count % 2 ? 1 : -1) * .95 * Math.ceil(count / 2);
+    const dist = target.r + 50 + imgSize(im).w * .6 + Math.ceil(count / 2) * 40; // fan out so several cards don't overlap
     im.attach = target.id; im.dx = Math.cos(ang) * dist; im.dy = Math.sin(ang) * dist;
   } else {
     const c = opts.at || toWorld(G.W / 2, G.H / 2);
@@ -1400,47 +1458,151 @@ async function addImageFile(file, opts = {}) {
   }
   images.push(im);
   persist();
-  selectImage(im);
-  const name = target ? (target.item ? target.item.text : target.kind === "me" ? "You" : target.label) : "";
-  toast(target ? "Image attached to " + name : "Image added to the board", () => removeImage(im.id, true));
+  if (!opts.quiet) {
+    selectImage(im);
+    toast(`${KIND_LABEL[kindOf(im)]} ${target ? "pinned to " + nodeName(target) : "pinned to the board"}`, () => removeImage(im.id, true));
+  }
+  return im;
 }
+
+async function addImageFile(file, opts = {}) { // photos and PDFs
+  if (!file) return;
+  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name || "")) return addPdfFile(file, opts);
+  if (!/^image\//.test(file.type)) { toast("Zia can pin photos, PDFs and links."); return; }
+  let shrunk;
+  try { shrunk = await downscale(file, 1280); } catch (e) { toast("Couldn't read that image."); return; }
+  const src = await uploadBlob(shrunk.blob, "image/jpeg");
+  if (src) placeAttachment({ id: uid(), kind: "image", src, w: shrunk.w, h: shrunk.h, size: 170 }, opts);
+}
+
+let pdfjsReady = null;
+function loadPdfJs() { // loaded the first time a PDF is added, only to draw its first page
+  // pdf.js's "worker" code is loaded onto the page too, so it runs on the main thread:
+  // simpler and more reliable than a cross-origin worker, and fine for drawing one first page
+  const load = src => new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error("pdf.js"));
+    document.head.append(s);
+  });
+  if (!pdfjsReady) pdfjsReady = load("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js")
+    .then(() => load("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"))
+    .then(() => window.pdfjsLib)
+    .catch(e => { pdfjsReady = null; throw e; });
+  return pdfjsReady;
+}
+async function pdfThumb(file) { // first page as a small JPEG, plus the page count
+  const lib = await loadPdfJs();
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const page = await doc.getPage(1), base = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 480 / base.width });
+  const cv = document.createElement("canvas"); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+  const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+  await page.render({ canvasContext: cx, viewport: vp }).promise;
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", .8));
+  return { blob, w: cv.width, h: cv.height, pages: doc.numPages };
+}
+async function addPdfFile(file, opts) {
+  if (file.size > 20e6) { toast("That PDF is too big (20 MB max)."); return; }
+  toast("Pinning " + (file.name || "PDF") + "…");
+  const src = await uploadBlob(file, "application/pdf");
+  if (!src) return;
+  const im = { id: uid(), kind: "pdf", src, thumb: "", name: file.name || "Document.pdf", pages: 0, w: 3, h: 4, size: 160 };
+  try { // never let the preview hold things up: give it 15 s, then pin without one
+    const t = await Promise.race([pdfThumb(file), new Promise((_, no) => setTimeout(() => no(new Error("slow")), 15000))]);
+    Object.assign(im, { w: t.w, h: t.h, pages: t.pages, thumb: (await uploadBlob(t.blob, "image/jpeg")) || "" });
+  } catch (e) {} // no preview: the card shows a plain page instead
+  placeAttachment(im, opts);
+}
+
+function normalizeUrl(t) { // accepts "docs.google.com/x" as well as full https:// links
+  t = String(t || "").trim().replace(/[)\].,;]+$/, "");
+  if (!/^https?:\/\//i.test(t) && /^[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/.test(t)) t = "https://" + t;
+  try { const u = new URL(t); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (e) { return null; }
+}
+async function addLink(url, opts = {}) {
+  const href = normalizeUrl(url);
+  if (!href) { toast("That doesn't look like a link."); return null; }
+  const im = placeAttachment({ id: uid(), kind: "link", url: href, title: hostOf(href), image: "", desc: "", size: 230 }, opts);
+  if (SERVER && serverReady) { // fetch the page title and preview picture
+    try {
+      const r = await api("/api/linkinfo?url=" + encodeURIComponent(href));
+      if (r.ok) {
+        const d = await r.json();
+        if (d.title) im.title = d.title;
+        if (d.image) im.image = d.image;
+        if (d.description) im.desc = d.description;
+        persist();
+        if (G.selImg === im.id) selectImage(im);
+      }
+    } catch (e) {}
+  }
+  return im;
+}
+
 function removeImage(id, silent) {
   const idx = images.findIndex(i => i.id === id);
   if (idx < 0) return;
   const [im] = images.splice(idx, 1);
   if (G.selImg === id) { G.selImg = null; hideCard(); }
   persist();
-  const purge = () => { // delete the uploaded file once undo is no longer possible
-    if (!images.some(i => i.src === im.src) && /^\/uploads\//.test(im.src)) api("/api/upload/" + im.src.split("/").pop(), { method: "DELETE" }).catch(() => {});
+  const purge = () => { // delete uploaded files once undo is no longer possible
+    [im.src, im.thumb].forEach(u => {
+      if (u && /^\/uploads\//.test(u) && !images.some(i => i.src === u || i.thumb === u)) api("/api/upload/" + u.split("/").pop(), { method: "DELETE" }).catch(() => {});
+    });
   };
   if (silent) { purge(); return; }
   setTimeout(purge, 6000);
-  toast("Image deleted", () => { images.splice(idx, 0, im); persist(); });
+  toast(KIND_LABEL[kindOf(im)] + " deleted", () => { images.splice(idx, 0, im); persist(); });
 }
+
 let imgTarget = null;
 function pickImages(target) { imgTarget = target || null; $("#imgFile").click(); }
 $("#imgFile").onchange = e => {
   const files = [...e.target.files]; e.target.value = "";
   files.forEach(f => addImageFile(f, { target: imgTarget }));
 };
-$("#zImg").onclick = () => pickImages(G.sel ? G.byId[G.sel] : null);
-document.addEventListener("paste", e => {
-  const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => /^image\//.test(f.type));
-  if (!files.length) return;
+let linkTarget = null;
+function askLink(target) { // small glass dialog to paste or type a link
+  linkTarget = target || null;
+  $("#linkUrl").value = "";
+  $("#linkHint").textContent = target ? "It will float next to " + nodeName(target) + "." : "It will float on the board. Select a task first to attach it there.";
+  $("#linkModal").classList.add("on");
+  setTimeout(() => $("#linkUrl").focus(), 30);
+}
+function closeLink() { $("#linkModal").classList.remove("on"); }
+$("#linkForm").addEventListener("submit", e => {
   e.preventDefault();
-  files.forEach(f => addImageFile(f));
+  const v = $("#linkUrl").value;
+  if (!normalizeUrl(v)) { $("#linkHint").textContent = "That doesn't look like a link. Try https://…"; return; }
+  closeLink(); addLink(v, { target: linkTarget });
+});
+$("#linkCancel").onclick = closeLink;
+$("#linkModal").addEventListener("pointerdown", e => { if (e.target.id === "linkModal") closeLink(); });
+$("#zImg").onclick = () => pickImages(G.sel ? G.byId[G.sel] : null);
+$("#zLink").onclick = () => askLink(G.sel ? G.byId[G.sel] : null);
+
+document.addEventListener("paste", e => { // paste a photo, a PDF or a link straight onto the board
+  const cd = e.clipboardData;
+  if (!cd) return;
+  const files = [...cd.files].filter(f => /^image\//.test(f.type) || f.type === "application/pdf");
+  if (files.length) { e.preventDefault(); files.forEach(f => addImageFile(f)); return; }
+  const typing = /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || "");
+  const text = cd.getData("text/plain");
+  if (!typing && text && /^\S+$/.test(text.trim()) && normalizeUrl(text) && /\.|^https?:/i.test(text)) { e.preventDefault(); addLink(text); }
 });
 const stageEl = $("#stage");
 stageEl.addEventListener("dragover", e => {
-  if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { e.preventDefault(); stageEl.classList.add("dragging"); }
+  const types = e.dataTransfer ? [...e.dataTransfer.types] : [];
+  if (types.includes("Files") || types.includes("text/uri-list")) { e.preventDefault(); stageEl.classList.add("dragging"); }
 });
 stageEl.addEventListener("dragleave", e => { if (!stageEl.contains(e.relatedTarget)) stageEl.classList.remove("dragging"); });
 stageEl.addEventListener("drop", e => {
   e.preventDefault(); stageEl.classList.remove("dragging");
   const r = canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
   const n = nodeAt(sx, sy), w = toWorld(sx, sy);
-  [...e.dataTransfer.files].filter(f => /^image\//.test(f.type))
-    .forEach((f, i) => addImageFile(f, { target: n || null, at: { x: w.x + i * 24, y: w.y + i * 24 } }));
+  const files = [...e.dataTransfer.files].filter(f => /^image\//.test(f.type) || f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+  if (files.length) { files.forEach((f, i) => addImageFile(f, { target: n || null, at: { x: w.x + i * 24, y: w.y + i * 24 } })); return; }
+  const url = (e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "").split("\n")[0];
+  if (url) addLink(url, { target: n || null, at: w });
 });
 
 /* ================= task ops ================= */
@@ -1636,6 +1798,14 @@ function applyActions(actions) {
   const chips = [], norm = s => s === "founder" ? "founder" : "student";
   (Array.isArray(actions) ? actions : []).slice(0, 15).forEach(a => {
     if (!a || typeof a !== "object") return;
+    if (a.type === "link") { // pin a web link, on a task if one was named
+      const href = normalizeUrl(a.url);
+      if (!href) return;
+      const t = (a.id && G.byId[a.id]) || null;
+      addLink(href, { target: t, quiet: true });
+      chips.push({ label: "🔗 " + hostOf(href) + (t && t.item ? " → " + t.item.text : ""), id: t ? t.id : null, side: t ? t.side : null });
+      return;
+    }
     if (a.type === "add") {
       const text = String(a.text || "").trim().slice(0, 120);
       if (!text) return;
@@ -1708,6 +1878,10 @@ function summary() {
 }
 function localBrain(t) {
   let m;
+  if ((m = t.match(/https?:\/\/\S+|\b[\w-]+(\.[\w-]+)+\/\S*/i))) { // a link: pin it, on the selected task if any
+    const target = G.sel ? G.sel : "";
+    return { reply: "Pinned that link" + (target && G.byId[target] && G.byId[target].item ? " to " + G.byId[target].item.text : " to the board") + ".", actions: [{ type: "link", url: m[0], id: target }] };
+  }
   if (/\b(what|show|list|tell|how)\b.*\b(have|pending|todo|to do|left|due|plate|first|doing|balanced)\b/i.test(t)) return { reply: summary(), actions: [] };
   if ((m = t.match(/^(?:mark\s+)?(?:done|finished|completed|complete)\s+(?:with\s+)?(.+)/i)) || (m = t.match(/^i(?: have|'ve)? (?:finished|completed|did|done)\s+(.+)/i))) {
     const it = findPending(m[1]);
@@ -1882,7 +2056,7 @@ $("#fab").onclick = () => session ? endSession() : startSession();
 /* ================= voice ================= */
 function setOrb(s) {
   G.orb = s;
-  document.body.dataset.agent = s; // drives the Siri-style edge glow
+  document.body.dataset.agent = s;
   $("#agentState").textContent = { idle: "Ready", listening: "Listening…", thinking: "Thinking…", speaking: "Speaking…" }[s];
   $("#miniOrb").className = "mini-orb " + s;
   const fab = $("#fab");
@@ -2110,9 +2284,9 @@ $("#file").onchange = e => {
 
 document.addEventListener("keydown", e => {
   const typingInField = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "");
-  if (e.key === "Escape") { closeEditor(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
+  if (e.key === "Escape") { closeEditor(); closeLink(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && G.selImg && !typingInField) { e.preventDefault(); removeImage(G.selImg); return; }
-  if (typingInField || $("#modal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (typingInField || $("#modal").classList.contains("on") || $("#linkModal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === "Space") { e.preventDefault(); session ? endSession() : startSession(); }
   else if (e.key === "/") { e.preventDefault(); switchTab("vAgent"); $("#askText").focus(); }
   else if (e.key === "n" || e.key === "N") { e.preventDefault(); openEditor(null); }

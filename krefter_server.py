@@ -16,6 +16,7 @@ import re
 import secrets
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,9 +26,9 @@ STORE = os.path.join(HERE, "krefter_store.json")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 UPLOADS = os.path.join(HERE, "uploads")
 MAX_BODY = 20_000_000
-MAX_IMAGE = 15_000_000
-IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-IMAGE_NAME = re.compile(r"^[0-9a-f]{24}\.(jpg|png|webp)$")
+MAX_IMAGE = 20_000_000
+IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf"}  # photos and PDFs
+IMAGE_NAME = re.compile(r"^[0-9a-f]{24}\.(jpg|png|webp|pdf)$")
 
 
 def load_env():
@@ -64,6 +65,7 @@ Action types:
  {"type":"undo","id":"<id>"}       mark pending again
  {"type":"delete","id":"<id>"}     remove
  {"type":"edit","id":"<id>", any of "text","side","cat","pri","due"}   change a task (e.g. move a deadline)
+ {"type":"link","url":"https://...","id":"<task id or empty>"}   pin a web link on the board, attached to that task if one is named
 
 Categories: student -> Assignment, Exam, Project, Lab, Other. founder -> Product, Customers, Fundraising, Team, Other.
 pri: 3 = urgent/important, 2 = normal, 1 = low.
@@ -72,6 +74,7 @@ Rules:
 - The words come from speech recognition. Fix obvious mishearings (e.g. "full strike" -> "full stack", "big data analytic" -> "Big Data Analytics"),
   drop filler like "I have", "there is", "institute for", and keep task titles short and clean (2-6 words, Title Case).
 - One sentence may contain several tasks: return one add action each.
+- If the user gives a web address, pin it with a link action (attach it to the task they mention, if any).
 - Resolve dates ONLY from the calendar given. Leave due empty if none was said.
 - Only use ids from the task list. Never invent ids. Use the conversation to resolve "that", "it", "the last one".
 - If a request is ambiguous, ask one short question and return no actions.
@@ -129,6 +132,39 @@ def ask_groq(said, items, today, history):
         data = json.loads(r.read().decode("utf-8"))
     out = json.loads(data["choices"][0]["message"]["content"])
     return {"reply": str(out.get("reply", "")), "actions": out.get("actions") or []}
+
+
+def parse_meta(html, base):
+    """Title, preview image and description of a web page, for link cards on the board."""
+    from html import unescape
+
+    def meta(name):
+        tag = re.search(r"<meta[^>]+(?:property|name)=[\"']" + re.escape(name) + r"[\"'][^>]*>", html, re.I)
+        m = re.search(r"content=[\"']([^\"']*)[\"']", tag.group(0), re.I) if tag else None
+        return unescape(m.group(1)).strip() if m else ""
+
+    t = re.search(r"<title[^>]*>([^<]*)</title>", html, re.I)
+    title = meta("og:title") or meta("twitter:title") or (unescape(t.group(1)).strip() if t else "")
+    image = meta("og:image") or meta("twitter:image")
+    image = urllib.parse.urljoin(base, image) if image else ""
+    if not image.startswith("https:"):
+        image = ""  # http images would be blocked on an https page
+    return {"title": title[:140], "image": image, "description": (meta("og:description") or meta("description"))[:200]}
+
+
+def link_info(url):
+    if not re.match(r"^https?://", url or ""):
+        return {"title": "", "image": "", "description": ""}
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ZiaLinkPreview/1.0)", "Accept": "text/html,*/*"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            ctype = r.headers.get("Content-Type", "")
+            if "html" not in ctype:
+                return {"title": "", "image": url if ctype.startswith("image/") and url.startswith("https:") else "", "description": ""}
+            html = r.read(400_000).decode(r.headers.get_content_charset() or "utf-8", "replace")
+            return parse_meta(html, r.geturl())
+    except Exception:
+        return {"title": "", "image": "", "description": ""}
 
 
 def read_store():
@@ -195,11 +231,16 @@ class Handler(BaseHTTPRequestHandler):
                 raw = f.read()
             ext = name.rsplit(".", 1)[1]
             self.send_response(200)
-            self.send_header("Content-Type", {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}[ext])
+            self.send_header("Content-Type", {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp", "pdf": "application/pdf"}[ext])
             self.send_header("Content-Length", str(len(raw)))
             self.send_header("Cache-Control", "private, max-age=31536000, immutable")
             self.end_headers()
             self.wfile.write(raw)
+        elif path == "/api/linkinfo":
+            if not self.authed():
+                return self.send_json(401, {"error": "locked"})
+            query = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+            self.send_json(200, link_info((query.get("url") or [""])[0]))
         elif path == "/api/health":
             self.send_json(200, {"ai": bool(KEY), "model": MODEL, "locked": bool(PASSCODE)})
         elif path == "/api/items":
@@ -241,7 +282,7 @@ class Handler(BaseHTTPRequestHandler):
         ctype = self.headers.get("Content-Type", "").split(";")[0].strip().lower()
         n = int(self.headers.get("Content-Length", 0))
         if ctype not in IMAGE_TYPES or not 0 < n <= MAX_IMAGE:
-            return self.send_json(400, {"error": "send a JPEG, PNG or WebP under 15 MB"})
+            return self.send_json(400, {"error": "send a photo (JPEG, PNG, WebP) or a PDF under 20 MB"})
         os.makedirs(UPLOADS, exist_ok=True)
         name = secrets.token_hex(12) + IMAGE_TYPES[ctype]
         with open(os.path.join(UPLOADS, name), "wb") as f:
