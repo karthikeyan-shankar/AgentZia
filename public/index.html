@@ -1338,7 +1338,22 @@ function pointerEnd(e) {
 canvas.addEventListener("pointerup", pointerEnd);
 canvas.addEventListener("pointercancel", pointerEnd);
 canvas.addEventListener("pointerleave", () => { if (!G.drag) G.hover = null; });
-canvas.addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * .0015), true); }, { passive: false });
+// Touchpads: pinch arrives as small wheel events with ctrlKey set, two-finger scroll as smooth pixel deltas.
+// So pinch zooms (fast), two-finger scroll pans like Figma/Maps, and a real mouse wheel (big notched steps) still zooms.
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  const px = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? G.H : 1, dx = e.deltaX * px, dy = e.deltaY * px;
+  const mouseWheel = e.deltaMode !== 0 || (!e.deltaX && Math.abs(dy) >= 50 && Number.isInteger(dy));
+  if (e.ctrlKey) zoomAt(e.offsetX, e.offsetY, Math.exp(-Math.max(-50, Math.min(50, dy)) * .012), false);
+  else if (mouseWheel) zoomAt(e.offsetX, e.offsetY, Math.exp(-dy * .0018), true);
+  else { G.cam.x -= dx; G.cam.y -= dy; G.target = null; G.inert = null; }
+  G.userCam = true;
+}, { passive: false });
+// Safari on Mac sends pinch as gesture events instead
+let gestureK = 1;
+canvas.addEventListener("gesturestart", e => { e.preventDefault(); gestureK = 1; });
+canvas.addEventListener("gesturechange", e => { e.preventDefault(); zoomAt(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top, e.scale / gestureK, false); gestureK = e.scale; });
+canvas.addEventListener("gestureend", e => e.preventDefault());
 
 function clickNode(n) {
   G.selImg = null;
