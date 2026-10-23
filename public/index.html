@@ -532,6 +532,56 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   }
+
+  /* ===== Liquid Glass, clear: panes read like water, the board shows through, light catches the rim ===== */
+  :root {
+    --lq-bg: rgba(255,255,255,.2); --lq-read: rgba(255,255,255,.46); --lq-fill: rgba(255,255,255,.28);
+    --lq-blur: blur(7px) saturate(190%) brightness(1.06);
+    --lq-rim-a: rgba(255,255,255,.95); --lq-rim-b: rgba(255,255,255,.12);
+    --lq-glow: inset 0 1px 1.5px rgba(255,255,255,.95), inset 0 -1px 1px rgba(255,255,255,.45), inset 0 0 22px rgba(255,255,255,.28);
+    --lq-drop: 0 1px 2px rgba(16,24,40,.06), 0 16px 44px rgba(16,24,40,.14);
+  }
+  :root[data-theme="dim"] { --lq-bg: rgba(244,246,249,.26); --lq-read: rgba(244,246,249,.52); }
+  :root[data-theme="dark"], :root[data-theme="graphene"] {
+    --lq-bg: rgba(28,29,34,.26); --lq-read: rgba(28,29,34,.52); --lq-fill: rgba(255,255,255,.07);
+    --lq-blur: blur(7px) saturate(170%) brightness(.92);
+    --lq-rim-a: rgba(255,255,255,.42); --lq-rim-b: rgba(255,255,255,.04);
+    --lq-glow: inset 0 1px 1px rgba(255,255,255,.22), inset 0 -1px 1px rgba(255,255,255,.08), inset 0 0 22px rgba(255,255,255,.05);
+    --lq-drop: 0 1px 2px rgba(0,0,0,.3), 0 18px 48px rgba(0,0,0,.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme="system"] {
+      --lq-bg: rgba(28,29,34,.26); --lq-read: rgba(28,29,34,.52); --lq-fill: rgba(255,255,255,.07);
+      --lq-blur: blur(7px) saturate(170%) brightness(.92);
+      --lq-rim-a: rgba(255,255,255,.42); --lq-rim-b: rgba(255,255,255,.04);
+      --lq-glow: inset 0 1px 1px rgba(255,255,255,.22), inset 0 -1px 1px rgba(255,255,255,.08), inset 0 0 22px rgba(255,255,255,.05);
+      --lq-drop: 0 1px 2px rgba(0,0,0,.3), 0 18px 48px rgba(0,0,0,.5);
+    }
+  }
+  .top, .legend, .zoom, .fab, .caption, .panel, .card, .menu, .sheet {
+    background: var(--lq-bg) !important; border-color: transparent !important;
+    backdrop-filter: var(--lq-blur) !important; -webkit-backdrop-filter: var(--lq-blur) !important;
+    box-shadow: var(--lq-drop), var(--lq-glow) !important;
+  }
+  /* panes you read from keep a little more body so text stays crisp */
+  .panel, .card, .menu, .sheet, .caption { background: var(--lq-read) !important; }
+  .btn, .pill, .tg, .seg, .tabs, .sugg button, .achip, .inp, .field { background: var(--lq-fill); border-color: transparent; box-shadow: var(--lq-glow); }
+  /* curved specular rim: bright where light hits (top-left, bottom-right), thin elsewhere */
+  .caption, .sheet { position: relative; } /* the rest are already positioned */
+  .top::before, .legend::before, .zoom::before, .fab::before, .caption::before, .panel::before, .card::before, .menu::before, .sheet::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; z-index: 3;
+    background: linear-gradient(135deg, var(--lq-rim-a), var(--lq-rim-b) 28%, var(--lq-rim-b) 70%, var(--lq-rim-a));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  .fab.on::before { background: none; padding: 0; }
+  .fab.on { background: rgba(240,68,56,.62) !important; }
+  .fab.talk:not(.on) { background: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
+  /* liquid press: controls squish like a drop and spring back */
+  .btn, .icon-btn, .pill, .tab, .seg button, .sugg button, .fab, .zoom button, .achip { transition: transform .45s var(--spring), background .25s; }
+  .btn:active, .icon-btn:active, .pill:active, .tab:active, .seg button:active, .sugg button:active, .zoom button:active, .achip:active { transform: scale(.92, .88); transition-duration: .12s; }
+  .fab:active { transform: scale(.9, .86) !important; transition-duration: .12s !important; }
+  @media (prefers-reduced-motion: reduce) { .btn:active, .icon-btn:active, .fab:active { transform: none !important; } }
 </style>
 </head>
 <body>
@@ -2377,6 +2427,57 @@ async function boot() {
     await loadServer();
   } catch (e) { setPill(false, "Server offline"); }
 }
+/* ================= liquid lens: the board bends under the rim of each glass pane (Chromium) ================= */
+// Builds a displacement map per pane (rounded-rect edge normals) and uses it as an SVG backdrop filter.
+const lens = (() => {
+  const ua = navigator.userAgentData;
+  if (reduceMotion || !(ua && ua.brands && ua.brands.some(b => /Chromium/.test(b.brand)))) return null;
+  const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", 0); svg.setAttribute("height", 0); svg.style.position = "absolute";
+  document.body.append(svg);
+  function map(w, h, r, rim) { // R/G = x/y push toward the centre, strongest at the edge
+    const q = 2, cw = Math.max(1, Math.round(w / q)), ch = Math.max(1, Math.round(h / q));
+    const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+    const c2 = cv.getContext("2d"), img = c2.createImageData(cw, ch), d = img.data;
+    r = Math.min(r, w / 2, h / 2);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const px = (x + .5) * q - w / 2, py = (y + .5) * q - h / 2;
+      const ax = Math.abs(px) - (w / 2 - r), ay = Math.abs(py) - (h / 2 - r);
+      let nx, ny, dist;
+      if (ax > 0 && ay > 0) { const l = Math.hypot(ax, ay) || 1; nx = ax / l; ny = ay / l; dist = r - l; }
+      else if (ax > ay) { nx = 1; ny = 0; dist = r - ax; } else { nx = 0; ny = 1; dist = r - ay; }
+      const t = Math.max(0, 1 - dist / rim), k = t * t * (3 - 2 * t);
+      const i = (y * cw + x) * 4;
+      d[i] = 128 - Math.sign(px) * nx * k * 127; d[i + 1] = 128 - Math.sign(py) * ny * k * 127; d[i + 2] = 128; d[i + 3] = 255;
+    }
+    c2.putImageData(img, 0, 0);
+    return cv.toDataURL();
+  }
+  let n = 0;
+  function apply(node, strength, blur) {
+    const id = "lq" + (n++), f = document.createElementNS(NS, "filter");
+    f.id = id; f.setAttribute("color-interpolation-filters", "sRGB"); f.setAttribute("filterUnits", "userSpaceOnUse");
+    f.setAttribute("x", 0); f.setAttribute("y", 0);
+    const fi = document.createElementNS(NS, "feImage"), fd = document.createElementNS(NS, "feDisplacementMap");
+    fi.setAttribute("result", "m"); fi.setAttribute("preserveAspectRatio", "none"); fi.setAttribute("x", 0); fi.setAttribute("y", 0);
+    fd.setAttribute("in", "SourceGraphic"); fd.setAttribute("in2", "m"); fd.setAttribute("xChannelSelector", "R"); fd.setAttribute("yChannelSelector", "G");
+    f.append(fi, fd); svg.append(f);
+    let last = "";
+    const fit = () => {
+      const w = Math.round(node.offsetWidth), h = Math.round(node.offsetHeight);
+      if (!w || !h || last === w + "x" + h) return;
+      last = w + "x" + h;
+      const r = parseFloat(getComputedStyle(node).borderTopLeftRadius) || 16, rim = Math.min(30, Math.min(w, h) * .34);
+      f.setAttribute("width", w); f.setAttribute("height", h); fi.setAttribute("width", w); fi.setAttribute("height", h);
+      fi.setAttribute("href", map(w, h, r, rim)); fd.setAttribute("scale", strength * Math.min(1, Math.min(w, h) / 70));
+      node.style.setProperty("backdrop-filter", `url(#${id}) blur(${blur}px) saturate(190%)`, "important");
+    };
+    new ResizeObserver(fit).observe(node); fit();
+  }
+  return { apply };
+})();
+if (lens) [[".top", 44, 3], [".legend", 36, 2], [".zoom", 40, 2], [".fab", 64, 2], [".panel", 64, 5], [".card", 50, 4]]
+  .forEach(([sel, k, b]) => document.querySelectorAll(sel).forEach(node => lens.apply(node, k, b))); // [pane, bend, blur px]
 boot();
 </script>
 </body>
