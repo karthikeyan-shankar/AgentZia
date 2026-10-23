@@ -582,6 +582,13 @@
   .btn:active, .icon-btn:active, .pill:active, .tab:active, .seg button:active, .sugg button:active, .zoom button:active, .achip:active { transform: scale(.92, .88); transition-duration: .12s; }
   .fab:active { transform: scale(.9, .86) !important; transition-duration: .12s !important; }
   @media (prefers-reduced-motion: reduce) { .btn:active, .icon-btn:active, .fab:active { transform: none !important; } }
+
+  /* sticky-note dialog */
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sw { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.12); transition: transform .35s var(--spring); }
+  .sw:hover { transform: scale(1.1); }
+  .sw.on { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+  #noteText { min-height: 120px; resize: vertical; font: 500 15px/1.45 inherit; color: #23262b; border-radius: 14px; transition: background .3s; }
 </style>
 </head>
 <body>
@@ -614,6 +621,7 @@
     <div class="hint" id="hint">Press <kbd>Space</kbd> to turn on the mic, then just talk. I'll keep listening.</div>
     <div class="zoom">
       <button id="zImg" title="Pin a photo or PDF (or paste with Ctrl+V)" aria-label="Pin a photo or PDF"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
+      <button id="zNote" title="Add a sticky note" aria-label="Add a sticky note"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg></button>
       <button id="zLink" title="Pin a link" aria-label="Pin a link"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg></button>
       <button id="zIn" title="Zoom in" aria-label="Zoom in"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="zOut" title="Zoom out" aria-label="Zoom out"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
@@ -714,6 +722,16 @@
     <div class="f"><label for="linkUrl">Web address</label><input class="inp" id="linkUrl" type="text" inputmode="url" placeholder="https://…" autocomplete="off" spellcheck="false"></div>
     <p class="muted" id="linkHint" style="margin:-4px 0 14px;font-size:12.5px"></p>
     <div class="foot"><span class="sp"></span><button type="button" class="btn" id="linkCancel">Cancel</button><button class="btn primary">Pin link</button></div>
+  </form>
+</div>
+
+<div class="modal" id="noteModal">
+  <form class="sheet" id="noteForm" style="max-width:420px">
+    <h3 id="noteTitle">Sticky note</h3>
+    <div class="f"><label for="noteText">Note</label><textarea class="inp" id="noteText" maxlength="400" placeholder="Write anything…"></textarea></div>
+    <div class="f"><span>Colour</span><div class="swatches" id="noteColors"></div></div>
+    <div class="f"><label for="noteLink">Link to</label><select class="inp" id="noteLink"></select></div>
+    <div class="foot"><span class="sp"></span><button type="button" class="btn" id="noteCancel">Cancel</button><button class="btn primary" id="noteSave">Add note</button></div>
   </form>
 </div>
 
@@ -1081,6 +1099,7 @@ function imgSize(im) { // size of the floating card on the board
   const k = kindOf(im);
   if (k === "link") { const w = im.size || 230; return { w, h: w * (im.image ? .8 : .44) }; }
   if (k === "pdf") { const w = im.size || 160; return { w, h: w * ((im.h / im.w) || 1.3) + 30 }; }
+  if (k === "note") { const w = im.size || 180; return { w, h: Math.max(w * .78, 36 + noteLines(im, w).length * 19) }; }
   const w = im.size || 170;
   return { w, h: w * (im.h / im.w || .75) };
 }
@@ -1103,6 +1122,42 @@ function drawCover(img, x, y, w, h) { // like CSS object-fit: cover
   const r = Math.max(w / img.naturalWidth, h / img.naturalHeight), sw = w / r, sh = h / r;
   ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
 }
+/* sticky notes: paper squares in soft colours, a strip of tape, a folded corner */
+const NOTE_COLORS = { yellow: "#ffe58a", pink: "#ffc4d8", mint: "#bff0d2", blue: "#c2e1ff", lavender: "#ddd2ff", peach: "#ffd4b2" };
+const noteCache = new WeakMap();
+function noteLines(im, w) { // word-wrapped lines, cached until the text or width changes
+  const key = w + "|" + im.text, c = noteCache.get(im);
+  if (c && c.key === key) return c.lines;
+  ctx.save(); ctx.font = `500 14px ${FONT}`;
+  const lines = [];
+  String(im.text || "").split("\n").forEach(par => {
+    let line = "";
+    par.split(/\s+/).forEach(word => {
+      const t = line ? line + " " + word : word;
+      if (ctx.measureText(t).width <= w - 26 || !line) line = t; else { lines.push(line); line = word; }
+    });
+    lines.push(line);
+  });
+  ctx.restore();
+  noteCache.set(im, { key, lines: lines.slice(0, 14) });
+  return lines.slice(0, 14);
+}
+function drawNote(im, p, s, sel) {
+  const tilt = jitter(im.id, 3) * .07, w = s.w, h = s.h;
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(tilt);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.2)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 7;
+  ctx.fillStyle = NOTE_COLORS[im.color] || NOTE_COLORS.yellow;
+  ctx.beginPath(); ctx.moveTo(-w / 2, -h / 2); ctx.lineTo(w / 2, -h / 2); ctx.lineTo(w / 2, h / 2 - 18); ctx.lineTo(w / 2 - 18, h / 2); ctx.lineTo(-w / 2, h / 2); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "rgba(0,0,0,.1)"; // folded corner
+  ctx.beginPath(); ctx.moveTo(w / 2, h / 2 - 18); ctx.lineTo(w / 2 - 18, h / 2 - 18); ctx.lineTo(w / 2 - 18, h / 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.save(); ctx.rotate(-tilt * 2); ctx.fillRect(-26, -h / 2 - 8, 52, 16); ctx.restore(); // tape
+  if (sel) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8); }
+  ctx.fillStyle = "#23262b"; ctx.font = `500 14px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  noteLines(im, w).forEach((l, i) => ctx.fillText(l, -w / 2 + 13, -h / 2 + 28 + i * 19));
+  ctx.restore();
+}
 function drawImages(fs) {
   images.forEach(im => { // dotted connectors first, so cards sit on top
     const n = im.attach && G.byId[im.attach];
@@ -1116,6 +1171,7 @@ function drawImages(fs) {
     const p = imgPos(im), s = imgSize(im), x = p.x - s.w / 2, y = p.y - s.h / 2, sel = G.selImg === im.id, k = kindOf(im);
     if (im.attach && G.byId[im.attach]) { im.lastX = p.x; im.lastY = p.y; }
     ctx.globalAlpha = fs && !(im.attach && fs.has(im.attach)) ? .3 : 1;
+    if (k === "note") { drawNote(im, p, s, sel); ctx.globalAlpha = 1; return; }
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,.16)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
     ctx.fillStyle = C["surface-solid"]; roundRect(x - 5, y - 5, s.w + 10, s.h + 10, 10); ctx.fill();
@@ -1359,6 +1415,7 @@ canvas.addEventListener("pointermove", e => {
     if (D.img) {
       const w = toWorld(pt.x, pt.y), cx = w.x - D.off.x, cy = w.y - D.off.y, an = D.img.attach && G.byId[D.img.attach];
       if (an) { D.img.dx = cx - an.x; D.img.dy = cy - an.y; } else { D.img.attach = null; D.img.x = cx; D.img.y = cy; }
+      const over = nodeAt(pt.x, pt.y); G.hover = over && over.kind !== "me" ? over : null; // shows where it will link
     }
     else if (D.node) { const w = toWorld(pt.x, pt.y); D.node.x = w.x; D.node.y = w.y; G.alpha = Math.max(G.alpha, .3); }
     else {
@@ -1382,7 +1439,15 @@ function pointerEnd(e) {
     const a = D.trail[0], b = D.trail[D.trail.length - 1], dt = Math.max(16, b.t - a.t);
     if (performance.now() - b.t < 90) G.inert = { vx: (b.x - a.x) / dt * 16, vy: (b.y - a.y) / dt * 16 };
   }
-  if (D && D.img && D.moved) persist();
+  if (D && D.img && D.moved) {
+    const over = nodeAt(e.offsetX, e.offsetY);
+    if (over && over.kind !== "me" && over.id !== D.img.attach) { // dropped on a node: link it there
+      const p = imgPos(D.img);
+      D.img.attach = over.id; D.img.dx = p.x - over.x; D.img.dy = p.y - over.y;
+      haptic(10); toast(KIND_LABEL[kindOf(D.img)] + " linked to " + nodeName(over));
+    }
+    persist();
+  }
   if (D && !D.moved && e.type === "pointerup") { if (D.img) selectImage(D.img); else clickNode(D.hit); }
 }
 canvas.addEventListener("pointerup", pointerEnd);
@@ -1473,20 +1538,20 @@ function positionCard() {
 
 /* attachment card + adding/removing photos, PDFs and links */
 const nodeName = t => t.item ? t.item.text : t.kind === "me" ? "You" : t.label;
-const KIND_LABEL = { image: "Photo", pdf: "PDF", link: "Link" };
+const KIND_LABEL = { image: "Photo", pdf: "PDF", link: "Link", note: "Note" };
 function selectImage(im) {
   G.selImg = im.id; G.sel = null;
   const card = $("#card"), owner = im.attach && G.byId[im.attach], k = kindOf(im);
   card.replaceChildren();
-  card.append(el("h4", null, k === "pdf" ? (im.name || "PDF") : k === "link" ? (im.title || hostOf(im.url)) : "Photo"));
+  card.append(el("h4", null, k === "pdf" ? (im.name || "PDF") : k === "link" ? (im.title || hostOf(im.url)) : k === "note" ? (String(im.text || "").split("\n")[0].slice(0, 60) || "Note") : "Photo"));
   const tags = el("div", "tags");
   tags.append(el("span", "tag", k === "link" ? hostOf(im.url) : k === "pdf" && im.pages ? `PDF · ${im.pages} page${im.pages > 1 ? "s" : ""}` : KIND_LABEL[k]),
     el("span", "tag", owner ? "On " + nodeName(owner) : "On the board"));
   card.append(tags);
   if (k === "link" && im.desc) { const d = el("p", null, im.desc); d.style.cssText = "margin:10px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.45"; card.append(d); }
   const acts = el("div", "acts");
-  const open = el("button", "btn primary grow", "Open");
-  open.onclick = () => k === "image" ? openViewer(im) : window.open(k === "pdf" ? im.src : im.url, "_blank", "noopener");
+  const open = el("button", "btn primary grow", k === "note" ? "Edit" : "Open");
+  open.onclick = () => k === "note" ? openNote(im) : k === "image" ? openViewer(im) : window.open(k === "pdf" ? im.src : im.url, "_blank", "noopener");
   const smaller = el("button", "btn", "−"); smaller.title = "Smaller"; smaller.setAttribute("aria-label", "Smaller");
   smaller.onclick = () => { im.size = Math.max(100, (im.size || imgSize(im).w) - 40); persist(); };
   const bigger = el("button", "btn", "+"); bigger.title = "Bigger"; bigger.setAttribute("aria-label", "Bigger");
@@ -1669,6 +1734,60 @@ $("#linkCancel").onclick = closeLink;
 $("#linkModal").addEventListener("pointerdown", e => { if (e.target.id === "linkModal") closeLink(); });
 $("#zImg").onclick = () => pickImages(G.sel ? G.byId[G.sel] : null);
 $("#zLink").onclick = () => askLink(G.sel ? G.byId[G.sel] : null);
+
+/* sticky notes: write, pick a colour, link to a task or category (or let it float) */
+let noteEditing = null, noteColor = "yellow";
+function paintNoteColors() {
+  $("#noteColors").replaceChildren(...Object.entries(NOTE_COLORS).map(([name, hex]) => {
+    const b = el("button", "sw" + (name === noteColor ? " on" : "")); b.type = "button"; b.style.background = hex;
+    b.title = name[0].toUpperCase() + name.slice(1); b.setAttribute("aria-label", b.title);
+    b.onclick = () => { noteColor = name; paintNoteColors(); };
+    return b;
+  }));
+  $("#noteText").style.background = NOTE_COLORS[noteColor];
+}
+function openNote(im, target) {
+  noteEditing = im || null;
+  noteColor = im ? im.color || "yellow" : "yellow";
+  $("#noteTitle").textContent = im ? "Edit note" : "Sticky note";
+  $("#noteSave").textContent = im ? "Save" : "Add note";
+  $("#noteText").value = im ? im.text || "" : "";
+  const sel = $("#noteLink"), cur = im ? im.attach || "" : target && target.kind !== "me" ? target.id : "";
+  const opt = (v, t) => new Option(t, v);
+  const groups = [["Tasks", G.nodes.filter(n => n.kind === "item" && !n.item.done).map(n => opt(n.id, n.item.text))],
+    ["Categories", G.nodes.filter(n => n.kind === "cat").map(n => opt(n.id, n.label))],
+    ["Areas", G.nodes.filter(n => n.kind === "hub").map(n => opt(n.id, n.label))]];
+  sel.replaceChildren(opt("", "Nothing, float on the board"), ...groups.filter(([, o]) => o.length).map(([label, o]) => {
+    const g = document.createElement("optgroup"); g.label = label; g.append(...o); return g;
+  }));
+  if (cur && !sel.querySelector(`option[value="${CSS.escape(cur)}"]`) && G.byId[cur]) sel.append(opt(cur, nodeName(G.byId[cur])));
+  sel.value = cur;
+  paintNoteColors();
+  $("#noteModal").classList.add("on");
+  setTimeout(() => $("#noteText").focus(), 30);
+}
+function closeNote() { $("#noteModal").classList.remove("on"); noteEditing = null; }
+function addNote(text, opts = {}) {
+  return placeAttachment({ id: uid(), kind: "note", text: String(text).slice(0, 400), color: opts.color || "yellow", size: 180 }, opts);
+}
+$("#noteForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const text = $("#noteText").value.trim();
+  if (!text) { $("#noteText").focus(); return; }
+  const target = G.byId[$("#noteLink").value] || null, im = noteEditing;
+  closeNote();
+  if (!im) { addNote(text, { target, color: noteColor }); return; }
+  im.text = text.slice(0, 400); im.color = noteColor;
+  if ((target ? target.id : null) !== (im.attach || null)) { // re-link: hop next to the new node, or stay where it is when unlinked
+    const p = imgPos(im);
+    images = images.filter(i => i !== im);
+    if (target) placeAttachment(im, { target, quiet: true }); else { Object.assign(im, { attach: null, x: p.x, y: p.y }); images.push(im); }
+  }
+  persist(); selectImage(im);
+});
+$("#noteCancel").onclick = closeNote;
+$("#noteModal").addEventListener("pointerdown", e => { if (e.target.id === "noteModal") closeNote(); });
+$("#zNote").onclick = () => openNote(null, G.sel ? G.byId[G.sel] : null);
 
 document.addEventListener("paste", e => { // paste a photo, a PDF or a link straight onto the board
   const cd = e.clipboardData;
@@ -1896,6 +2015,14 @@ function applyActions(actions) {
       chips.push({ label: "🔗 " + hostOf(href) + (t && t.item ? " → " + t.item.text : ""), id: t ? t.id : null, side: t ? t.side : null });
       return;
     }
+    if (a.type === "note") { // a sticky note, on a task if one was named
+      const text = String(a.text || "").trim();
+      if (!text) return;
+      const t = (a.id && G.byId[a.id]) || null;
+      addNote(text, { target: t, quiet: true });
+      chips.push({ label: "🗒 " + text.slice(0, 40) + (t && t.item ? " → " + t.item.text : ""), id: t ? t.id : null, side: t ? t.side : null });
+      return;
+    }
     if (a.type === "add") {
       const text = String(a.text || "").trim().slice(0, 120);
       if (!text) return;
@@ -1971,6 +2098,10 @@ function localBrain(t) {
   if ((m = t.match(/https?:\/\/\S+|\b[\w-]+(\.[\w-]+)+\/\S*/i))) { // a link: pin it, on the selected task if any
     const target = G.sel ? G.sel : "";
     return { reply: "Pinned that link" + (target && G.byId[target] && G.byId[target].item ? " to " + G.byId[target].item.text : " to the board") + ".", actions: [{ type: "link", url: m[0], id: target }] };
+  }
+  if ((m = t.match(/^(?:add |make |write )?(?:a )?(?:sticky )?note(?: that| saying)?[:,]?\s+(.+)/i))) {
+    const target = G.sel && G.byId[G.sel] ? G.sel : "";
+    return { reply: "Stuck a note on the board.", actions: [{ type: "note", text: m[1], id: target }] };
   }
   if (/\b(what|show|list|tell|how)\b.*\b(have|pending|todo|to do|left|due|plate|first|doing|balanced)\b/i.test(t)) return { reply: summary(), actions: [] };
   if ((m = t.match(/^(?:mark\s+)?(?:done|finished|completed|complete)\s+(?:with\s+)?(.+)/i)) || (m = t.match(/^i(?: have|'ve)? (?:finished|completed|did|done)\s+(.+)/i))) {
@@ -2376,9 +2507,9 @@ $("#file").onchange = e => {
 
 document.addEventListener("keydown", e => {
   const typingInField = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "");
-  if (e.key === "Escape") { closeEditor(); closeLink(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
+  if (e.key === "Escape") { closeEditor(); closeLink(); closeNote(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && G.selImg && !typingInField) { e.preventDefault(); removeImage(G.selImg); return; }
-  if (typingInField || $("#modal").classList.contains("on") || $("#linkModal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (typingInField || $("#modal").classList.contains("on") || $("#linkModal").classList.contains("on") || $("#noteModal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === "Space") { e.preventDefault(); session ? endSession() : startSession(); }
   else if (e.key === "/") { e.preventDefault(); switchTab("vAgent"); $("#askText").focus(); }
   else if (e.key === "n" || e.key === "N") { e.preventDefault(); openEditor(null); }
