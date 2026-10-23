@@ -679,8 +679,8 @@ const CATS = {
   student: ["Assignment", "Exam", "Project", "Lab", "Other"],
   founder: ["Product", "Customers", "Fundraising", "Team", "Other"]
 };
-// Separate boards on the same site: /hari and /keerthi have one parent node and their own saved data.
-const PROFILES = { hari: { name: "Hari Haran" }, keerthi: { name: "Keerthilakshmi" } };
+// Separate boards on the same site: /hari, /keerthi and /indira have one parent node and their own saved data.
+const PROFILES = { hari: { name: "Hari Haran" }, keerthi: { name: "Keerthilakshmi" }, indira: { name: "Indira" } };
 const PROFILE = (() => {
   const u = (location.pathname.replace(/^\/+|\/+$/g, "") || new URLSearchParams(location.search).get("u") || "").toLowerCase();
   return PROFILES[u] ? u : "";

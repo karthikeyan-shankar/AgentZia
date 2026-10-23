@@ -85,7 +85,7 @@ Rules:
 
 # Separate boards picked by ?u= (the page sends it from /hari, /keerthi); same list as lib/zia.js.
 # "single" boards have one parent node ("You") instead of the Student and Founder hubs.
-PROFILES = {"": {"name": "", "single": False}, "hari": {"name": "Hari Haran", "single": True}, "keerthi": {"name": "Keerthilakshmi", "single": True}}
+PROFILES = {"": {"name": "", "single": False}, "hari": {"name": "Hari Haran", "single": True}, "keerthi": {"name": "Keerthilakshmi", "single": True}, "indira": {"name": "Indira", "single": True}}
 SINGLE_CATS = ["Exam", "Assignment", "Project", "Lab", "Work", "Personal", "Other"]
 
 
