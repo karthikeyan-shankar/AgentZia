@@ -606,6 +606,9 @@
   .mmbar button:disabled { opacity: .35; }
   .mmbar button.danger { color: var(--danger); }
   .mmbar svg.i { width: 16px; height: 16px; }
+  .mmbar button.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .mm-count { display: none; padding: 0 10px; font-size: 12.5px; font-weight: 600; color: var(--accent); white-space: nowrap; flex: none; }
+  .mm-count.on { display: inline; }
   .mmbar .sep { width: 1px; height: 22px; background: var(--line2); margin: 0 4px; flex: none; }
   .mm-edit { position: absolute; z-index: 7; display: none; padding: 4px 9px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface-solid);
     color: var(--ink); font: 600 13px/1.3 -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif; box-shadow: 0 6px 22px rgba(0,0,0,.14); outline: none; }
@@ -659,6 +662,10 @@
     <div class="legend"><span><i style="background:var(--student)"></i>Student</span><span><i style="background:var(--founder)"></i>Founder</span><span><i style="border:2px solid var(--danger)"></i>Overdue</span><span><i style="border:2px solid var(--warn)"></i>Due soon</span></div>
     <div class="hint" id="hint">Press <kbd>Space</kbd> to turn on the mic, then just talk. I'll keep listening.</div>
     <div class="mmbar" id="mmBar" role="toolbar" aria-label="Mind map">
+      <button data-act="select" title="Box-select: drag on empty space to pick nodes (or Shift+drag)"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/></svg>Select</button>
+      <button data-act="all" title="Select every node (Ctrl+A)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>All</button>
+      <span class="mm-count" id="mmCount"></span>
+      <span class="sep"></span>
       <button data-act="topic" title="New topic (Tab with nothing selected)"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Topic</button>
       <span class="sep"></span>
       <button data-act="child" title="Add child (Tab)"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg>Child</button>
@@ -669,6 +676,7 @@
       <button data-act="details" title="Date and priority"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Date</button>
       <button data-act="done" title="Mark done"><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><span>Done</span></button>
       <button data-act="fold" title="Collapse or expand the branch"><svg class="i" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></svg><span>Fold</span></button>
+      <button data-act="tidy" title="Snap every node back to the automatic layout"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>Tidy</button>
       <button data-act="attach" title="Attach a photo or PDF"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
       <button data-act="link" title="Attach a link"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg></button>
       <button data-act="note" title="Stick a note on it"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg></button>
@@ -1137,7 +1145,7 @@ function draw() {
   ctx.translate(W / 2 + cam.x, H / 2 + cam.y);
   ctx.scale(k, k);
   const fs = focusSet();
-  if (PLAN) { drawImages(null); drawTree(now); return; }
+  if (PLAN) { drawImages(null); drawTree(now); drawBox(); return; }
 
   G.links.forEach(l => {
     const { a, b } = l, col = sideColor(b.side), faded = fs && !(fs.has(a.id) && fs.has(b.id));
@@ -1477,6 +1485,10 @@ canvas.addEventListener("pointerdown", e => {
     pinch = { d: Math.hypot(p.x - q.x, p.y - q.y) || 1, k: G.cam.k }; G.drag = null; return;
   }
   const n = nodeAt(e.offsetX, e.offsetY), im = n ? null : imageAt(e.offsetX, e.offsetY);
+  if (PLAN && !n && !im && (e.shiftKey || G.boxMode)) { // box-select instead of panning
+    G.drag = { box: true, add: e.shiftKey || e.ctrlKey || e.metaKey, sx: e.offsetX, sy: e.offsetY, bx: e.offsetX, by: e.offsetY, moved: false };
+    return;
+  }
   let off = null;
   if (im) { const w = toWorld(e.offsetX, e.offsetY), p = imgPos(im); off = { x: w.x - p.x, y: w.y - p.y }; }
   G.drag = { node: n && (n.kind === "item" || n.kind === "cat") ? n : null, hit: n, img: im, off, sx: e.offsetX, sy: e.offsetY, cx: G.cam.x, cy: G.cam.y, moved: false };
@@ -1494,6 +1506,8 @@ canvas.addEventListener("pointermove", e => {
   if (D) {
     if (Math.hypot(pt.x - D.sx, pt.y - D.sy) > 4) D.moved = true;
     if (!D.moved) return;
+    if (D.box) { D.bx = pt.x; D.by = pt.y; return; }
+    if (PLAN && D.node) { mmDragMove(D, pt); return; }
     if (D.img) {
       const w = toWorld(pt.x, pt.y), cx = w.x - D.off.x, cy = w.y - D.off.y, an = D.img.attach && G.byId[D.img.attach];
       if (an) { D.img.dx = cx - an.x; D.img.dy = cy - an.y; } else { D.img.attach = null; D.img.x = cx; D.img.y = cy; }
@@ -1530,7 +1544,9 @@ function pointerEnd(e) {
     }
     persist();
   }
-  if (PLAN && D && D.node && D.moved) mmDrop(D.node, e);
+  if (PLAN && D && D.box) { mmBoxEnd(D); return; }
+  if (PLAN && D && D.node && D.moved) mmDrop(D, e);
+  if (PLAN && D && !D.moved && D.hit && e.type === "pointerup" && (e.shiftKey || e.ctrlKey || e.metaKey || G.boxMode)) { mmToggle(D.hit.id); return; }
   if (D && !D.moved && e.type === "pointerup") { if (D.img) selectImage(D.img); else clickNode(D.hit); }
 }
 canvas.addEventListener("pointerup", pointerEnd);
@@ -1555,6 +1571,7 @@ canvas.addEventListener("gestureend", e => e.preventDefault());
 
 function clickNode(n) {
   G.selImg = null;
+  if (PLAN) G.multi.clear();
   if (!n) { G.sel = null; hideCard(); return; }
   if (n.kind === "item") { G.sel = n.id; showCard(n); return; }
   G.sel = null; hideCard();
@@ -2599,8 +2616,9 @@ $("#file").onchange = e => {
 
 document.addEventListener("keydown", e => {
   const typingInField = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "");
-  if (e.key === "Escape") { closeEditor(); closeLink(); closeNote(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
+  if (e.key === "Escape") { if (PLAN) mmClearSel(); closeEditor(); closeLink(); closeNote(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && G.selImg && !typingInField) { e.preventDefault(); removeImage(G.selImg); return; }
+  if (PLAN && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a" && !typingInField && !document.querySelector(".modal.on")) { e.preventDefault(); mmSelectAll(); return; }
   if (typingInField || $("#modal").classList.contains("on") || $("#linkModal").classList.contains("on") || $("#noteModal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
   if (PLAN && mmKey(e)) return;
   if (e.code === "Space") { e.preventDefault(); session ? endSession() : startSession(); }
@@ -2656,9 +2674,12 @@ async function pullPlan() {
   } catch (e) {}
 }
 if (PLAN) setInterval(pullPlan, 4000);
+if (PLAN && document.fonts) document.fonts.ready.then(() => build()); // labels were measured with the fallback font until now
 /* ================= plan board: a mind map (topics on the left, branches to the right) ================= */
 // Items on /plan carry `parent` (another item's id, or "" for a topic) instead of living in categories.
-const MM = { rowH: 50, gapX: 64, wrap: 210 };
+const MM = { rowH: 54, gapX: 72, wrap: 210 };
+G.multi = new Set(); // plan board: nodes picked together (Shift/Ctrl-click, box, Ctrl+A)
+G.boxMode = false;  // plan board: dragging empty space draws a selection box (for touch)
 const kidsOf = id => items.filter(i => (i.parent || "") === id && (id === "" || i.id !== id));
 function validParent(it) { return it.parent && items.some(i => i.id === it.parent) ? it.parent : ""; }
 function descendants(id) { // ids of everything under a node
@@ -2717,11 +2738,18 @@ function buildTree() {
   };
   kidsOf("").forEach((t, i) => { if (i) y += 26 * s; place(t, 0, 0, null); });
   const midY = y / 2; // centre the map vertically on the origin
-  nodes.forEach(n => { n.ty -= midY; if (G.first || !keep[n.id] && !n.x && !n.y) { n.x = n.tx; n.y = n.ty; } });
+  const up = {}; links.forEach(l => { up[l.b.id] = l.a; });
+  nodes.forEach(n => { // parents come before their children, so offsets add up along the branch
+    const p = up[n.id];
+    n.ax = (p ? p.ax : 0) + (+n.item.ox || 0); n.ay = (p ? p.ay : 0) + (+n.item.oy || 0);
+    n.tx += n.ax; n.ty += n.ay - midY;
+    if (G.first || !keep[n.id] && !n.x && !n.y) { n.x = n.tx; n.y = n.ty; }
+  });
   G.nodes = nodes; G.links = links; G.byId = {};
   nodes.forEach(n => G.byId[n.id] = n);
   if (G.hover) G.hover = G.byId[G.hover.id] || null;
   if (G.sel && !G.byId[G.sel]) G.sel = null;
+  [...G.multi].forEach(id => { if (!G.byId[id]) G.multi.delete(id); });
   if (G.first) { nodes.forEach(n => { n.x = n.tx; n.y = n.ty; }); G.first = false; G.alpha = .05; if (!G.userCam) fit(true); }
   else G.alpha = Math.max(G.alpha, .9);
   $("#hint").style.display = items.length ? "none" : "";
@@ -2734,7 +2762,7 @@ function drawTree(now) {
     ctx.beginPath(); ctx.moveTo(sx, a.y); ctx.bezierCurveTo(mx, a.y, mx, b.y, ex, b.y); ctx.stroke();
   });
   G.nodes.forEach(n => {
-    const it = n.item, sel = G.sel === n.id, hov = G.hover === n, col = it.done ? C.ok : C.accent;
+    const it = n.item, sel = G.sel === n.id || G.multi.has(n.id), hov = G.hover === n, col = it.done ? C.ok : C.accent;
     const grow = easeBack(Math.min(1, (now - n.born) / 500)), r = n.r * grow * (hov ? 1.08 : 1);
     if (r < 2) return; // still popping in
     const b0 = bursts[n.id], bp = b0 ? (now - b0) / 700 : 1;
@@ -2778,6 +2806,14 @@ function drawTree(now) {
     if (it.due && !it.done) drawDueBadge(n, it);
   });
 }
+function drawBox() { // the rubber-band rectangle while box-selecting
+  const D = G.drag;
+  if (!D || !D.box || !D.moved) return;
+  const a = toWorld(D.sx, D.sy), b = toWorld(D.bx, D.by), k = G.cam.k;
+  ctx.fillStyle = rgba(C.accent, .08); ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  ctx.setLineDash([5 / k, 4 / k]); ctx.strokeStyle = rgba(C.accent, .8); ctx.lineWidth = 1.2 / k;
+  ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y); ctx.setLineDash([]);
+}
 function mmHit(sx, sy, skip) { // circle or label
   const p = toWorld(sx, sy), pad = (isMobile() ? 10 : 4) / G.cam.k;
   for (let i = G.nodes.length - 1; i >= 0; i--) {
@@ -2811,6 +2847,18 @@ function mmNew(parent, at) { // a new node, placed after `at` among its siblings
 function mmAct(act) {
   const it = G.sel && items.find(i => i.id === G.sel), n = it && G.byId[it.id];
   if (act === "topic") return mmNew("", null);
+  if (act === "select") { G.boxMode = !G.boxMode; renderBar(); if (G.boxMode) toast("Drag on empty space to select. Tap nodes to add or remove them."); return; }
+  if (act === "all") return mmSelectAll();
+  if (act === "tidy") return mmTidy();
+  if (G.multi.size > 1 && (act === "delete" || act === "done")) { // act on every picked node
+    const ids = [...G.multi];
+    if (act === "done") {
+      const finish = ids.some(id => { const x = items.find(i => i.id === id); return x && !x.done; });
+      ids.forEach(id => { const x = items.find(i => i.id === id); if (x) { x.done = finish; x.doneAt = finish ? Date.now() : null; if (finish) celebrate(id); } });
+      update(); toast(`${finish ? "Done" : "Reopened"}: ${ids.length} nodes`);
+    } else mmDelete(ids);
+    return;
+  }
   if (!it) return;
   if (act === "child") mmNew(it.id, kidsOf(it.id).slice(-1)[0] || null);
   else if (act === "sibling") mmNew(it.parent || "", it);
@@ -2828,16 +2876,25 @@ function mmAct(act) {
   else if (act === "note") openNote(null, n);
   else if (act === "delete") mmDelete(it.id);
 }
-function mmDelete(id) {
-  const gone = new Set([id, ...descendants(id)]), before = items.slice();
-  const it = items.find(i => i.id === id);
+function mmDelete(ids) {
+  ids = Array.isArray(ids) ? ids : [ids];
+  const gone = new Set(), before = items.slice();
+  ids.forEach(id => { gone.add(id); descendants(id).forEach(d => gone.add(d)); });
+  const it = items.find(i => i.id === ids[0]);
   items = items.filter(i => !gone.has(i.id));
-  G.sel = null; update();
-  toast(`Deleted ${it && it.text ? it.text : "node"}${gone.size > 1 ? ` and ${gone.size - 1} under it` : ""}`, () => { items = before; update(); });
+  G.sel = null; G.multi.clear(); update();
+  const what = ids.length > 1 ? `${gone.size} nodes` : `${it && it.text ? it.text : "node"}${gone.size > 1 ? ` and ${gone.size - 1} under it` : ""}`;
+  toast(`Deleted ${what}`, () => { items = before; update(); });
 }
 function renderBar() {
-  const it = G.sel && items.find(i => i.id === G.sel);
-  document.querySelectorAll("#mmBar button").forEach(b => { if (b.dataset.act !== "topic") b.disabled = !it; });
+  const it = G.sel && items.find(i => i.id === G.sel), many = G.multi.size > 1;
+  const always = ["topic", "select", "all", "tidy"], single = ["child", "sibling", "parent", "rename", "details", "fold", "attach", "link", "note"];
+  document.querySelectorAll("#mmBar button").forEach(b => {
+    const a = b.dataset.act;
+    b.disabled = always.includes(a) ? false : !it || (many && single.includes(a));
+  });
+  document.querySelector('#mmBar [data-act="select"]').classList.toggle("on", G.boxMode);
+  const c = $("#mmCount"); c.textContent = many ? G.multi.size + " selected" : ""; c.classList.toggle("on", many);
   const d = document.querySelector('#mmBar [data-act="done"] span'); if (d) d.textContent = it && it.done ? "Reopen" : "Done";
   const f = document.querySelector('#mmBar [data-act="fold"] span'); if (f) f.textContent = it && it.fold ? "Unfold" : "Fold";
   if (!isMobile() && G.W) $("#mmBar").style.left = (G.W - boardInsets().r) / 2 + "px";
@@ -2880,21 +2937,89 @@ $("#mmEdit").addEventListener("blur", () => mmCommit(true));
 
 // ---- keyboard on the plan board
 function mmKey(e) {
+  const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (arrows && (G.multi.size || G.sel)) { // nudge the selection (Shift = bigger steps)
+    e.preventDefault();
+    const step = e.shiftKey ? 40 : 10;
+    G.userCam = true; mmMoveBy(G.multi.size ? [...G.multi] : [G.sel], arrows[0] * step, arrows[1] * step);
+    clearTimeout(mmKey.t); mmKey.t = setTimeout(update, 350);
+    return true;
+  }
   if (e.key === "Tab") { e.preventDefault(); mmAct(G.sel ? "child" : "topic"); return true; }
   if (!G.sel) return false;
   if (e.key === "Enter") { e.preventDefault(); mmAct("sibling"); return true; }
   if (e.key === "F2") { e.preventDefault(); mmAct("rename"); return true; }
   if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); mmAct("delete"); return true; }
+  if ((e.key === "d" || e.key === "D") && G.multi.size > 1) { e.preventDefault(); mmAct("done"); return true; }
   return false;
 }
-// ---- drag a node onto another to move its whole branch there
-function mmDrop(n, e) {
-  const skip = new Set([n.id, ...descendants(n.id)]), over = mmHit(e.offsetX, e.offsetY, skip);
+// ---- selecting several nodes and moving them freely
+function mmToggle(id) { // Shift/Ctrl-click (or tap in Select mode) adds or removes a node
+  if (G.sel && !G.multi.size) G.multi.add(G.sel);
+  G.multi.has(id) ? G.multi.delete(id) : G.multi.add(id);
+  G.sel = G.multi.has(id) ? id : [...G.multi].pop() || null;
+  haptic(6); renderBar();
+}
+function mmSelectAll() { G.nodes.forEach(n => G.multi.add(n.id)); G.sel = G.nodes.length ? G.nodes[0].id : null; renderBar(); }
+function mmClearSel() { G.multi.clear(); G.boxMode = false; renderBar(); }
+function mmBoxEnd(D) {
+  if (!D.moved) { if (!D.add) { G.multi.clear(); G.sel = null; } renderBar(); return; }
+  const a = toWorld(D.sx, D.sy), b = toWorld(D.bx, D.by);
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  if (!D.add) G.multi.clear();
+  G.nodes.forEach(n => { if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1) G.multi.add(n.id); });
+  G.sel = [...G.multi][0] || null;
+  haptic(8); renderBar();
+}
+function hasPickedAncestor(id, set) {
+  let p = (items.find(i => i.id === id) || {}).parent;
+  for (let guard = 0; p && guard < 500; guard++) { if (set.has(p)) return true; p = (items.find(i => i.id === p) || {}).parent; }
+  return false;
+}
+function shiftBranch(id, dx, dy) { // move a node and everything drawn under it, right now
+  [id, ...descendants(id)].forEach(k => { const n = G.byId[k]; if (n) { n.x += dx; n.y += dy; n.tx += dx; n.ty += dy; } });
+}
+function mmMoveBy(ids, dx, dy) { // only the top-most picked nodes get the offset; their branches follow
+  const set = new Set(ids);
+  ids.filter(id => !hasPickedAncestor(id, set)).forEach(id => {
+    const it = items.find(i => i.id === id);
+    if (!it) return;
+    it.ox = Math.round(((+it.ox || 0) + dx) * 10) / 10; it.oy = Math.round(((+it.oy || 0) + dy) * 10) / 10;
+    shiftBranch(id, dx, dy);
+  });
+}
+function mmDragMove(D, pt) {
+  G.userCam = true; // the view stays where it is; it mustn't re-fit and undo the move visually
+  if (!D.group) {
+    if (!G.multi.has(D.node.id)) { G.multi.clear(); G.sel = D.node.id; }
+    D.group = G.multi.size ? [...G.multi] : [D.node.id];
+    D.last = toWorld(D.sx, D.sy); renderBar();
+  }
+  const w = toWorld(pt.x, pt.y);
+  mmMoveBy(D.group, w.x - D.last.x, w.y - D.last.y);
+  D.last = w;
+  if (D.group.length === 1) { // a single node can still be dropped onto another to move under it
+    const skip = new Set([D.node.id, ...descendants(D.node.id)]);
+    G.hover = mmHit(pt.x, pt.y, skip);
+  }
+}
+// ---- drop: onto another node = move the branch under it; anywhere else = stay where it was put
+function mmDrop(D, e) {
+  const n = D.node, single = !D.group || D.group.length === 1;
+  const skip = new Set([n.id, ...descendants(n.id)]), over = single ? mmHit(e.offsetX, e.offsetY, skip) : null;
+  G.hover = null;
   if (over && over.id !== n.item.parent) {
-    n.item.parent = over.id; over.item.fold = false;
+    n.item.parent = over.id; over.item.fold = false; delete n.item.ox; delete n.item.oy; // takes its slot in the new branch
     items = items.filter(i => i !== n.item); items.push(n.item); // last child of its new parent
     haptic(12); update(); toast(`Moved ${n.item.text} under ${over.item.text}`);
-  } else G.alpha = .9; // springs back into place
+  } else update(); // keep the new position (saved for both of you)
+}
+function mmTidy() {
+  const before = items.map(i => [i.id, i.ox, i.oy]);
+  if (!before.some(([, x, y]) => x || y)) { toast("Already tidy"); return; }
+  items.forEach(i => { delete i.ox; delete i.oy; });
+  update(); G.userCam = false; fit(false);
+  toast("Layout tidied", () => { before.forEach(([id, x, y]) => { const it = items.find(i => i.id === id); if (it && (x || y)) { it.ox = x; it.oy = y; } }); update(); });
 }
 canvas.addEventListener("dblclick", e => { if (!PLAN) return; const n = mmHit(e.offsetX, e.offsetY); if (n) { G.sel = n.id; mmRename(n.id); } });
 /* desktop side panel: close it to give the board the whole window (remembered per browser) */
