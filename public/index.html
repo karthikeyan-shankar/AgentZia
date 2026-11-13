@@ -589,6 +589,29 @@
   .sw:hover { transform: scale(1.1); }
   .sw.on { outline: 2.5px solid var(--accent); outline-offset: 2px; }
   #noteText { min-height: 120px; resize: vertical; font: 500 15px/1.45 inherit; color: #23262b; border-radius: 14px; transition: background .3s; }
+  .plan-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; font-size: 13px; font-weight: 600; color: var(--ink); text-decoration: none; }
+  .plan-btn[hidden] { display: none; }
+  .plan-btn svg.i { width: 16px; height: 16px; color: var(--accent); }
+  @media (max-width: 860px) { .plan-btn { padding: 0 11px; } .plan-btn span { display: none; } }
+
+  /* ===== plan board: mind map ===== */
+  .plan .f:has(#edCat) { display: none; } .plan .grid2 { grid-template-columns: 1fr; }
+  .mmbar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 6; display: none; align-items: center; gap: 2px;
+    padding: 6px; border-radius: 999px; max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; }
+  .plan .mmbar { display: flex; }
+  .mmbar::-webkit-scrollbar { display: none; }
+  .mmbar { background: var(--lq-read); backdrop-filter: var(--lq-blur); -webkit-backdrop-filter: var(--lq-blur); box-shadow: var(--lq-drop), var(--lq-glow); }
+  .mmbar button { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; flex: none; }
+  .mmbar button:hover:not(:disabled) { background: var(--g-fill); }
+  .mmbar button:disabled { opacity: .35; }
+  .mmbar button.danger { color: var(--danger); }
+  .mmbar svg.i { width: 16px; height: 16px; }
+  .mmbar .sep { width: 1px; height: 22px; background: var(--line2); margin: 0 4px; flex: none; }
+  .mm-edit { position: absolute; z-index: 7; display: none; padding: 4px 9px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface-solid);
+    color: var(--ink); font: 600 13px/1.3 -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif; box-shadow: 0 6px 22px rgba(0,0,0,.14); outline: none; }
+  .mm-edit.on { display: block; }
+  @media (max-width: 860px) { .mmbar { bottom: calc(118px + env(safe-area-inset-bottom)); left: 12px; right: 12px; transform: none; justify-content: flex-start; }
+    .mmbar button { padding: 0 11px; } }
 </style>
 </head>
 <body>
@@ -603,6 +626,7 @@
       <div class="chip opt" title="Pending work split"><span style="color:var(--student)">Student</span><div class="bal"><i id="balS" style="background:var(--student);width:50%"></i><i id="balF" style="background:var(--founder);width:50%"></i></div><span style="color:var(--founder)">Founder</span></div>
     </div>
     <div class="actions">
+      <a class="btn plan-btn" id="btnPlan" hidden><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 9h8M8 13h5M3 9h18" opacity=".55"/></svg><span></span></a>
       <span class="pill" id="aiPill">Connecting…</span>
       <div class="theme-wrap">
         <button class="icon-btn" id="btnTheme" title="Appearance and colour" aria-label="Appearance and colour" aria-haspopup="true"><span class="swatch-dot"></span></button>
@@ -619,6 +643,23 @@
     <canvas id="graph" aria-label="Map of your tasks"></canvas>
     <div class="legend"><span><i style="background:var(--student)"></i>Student</span><span><i style="background:var(--founder)"></i>Founder</span><span><i style="border:2px solid var(--danger)"></i>Overdue</span><span><i style="border:2px solid var(--warn)"></i>Due soon</span></div>
     <div class="hint" id="hint">Press <kbd>Space</kbd> to turn on the mic, then just talk. I'll keep listening.</div>
+    <div class="mmbar" id="mmBar" role="toolbar" aria-label="Mind map">
+      <button data-act="topic" title="New topic (Tab with nothing selected)"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Topic</button>
+      <span class="sep"></span>
+      <button data-act="child" title="Add child (Tab)"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg>Child</button>
+      <button data-act="sibling" title="Add sibling (Enter)"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M12 8.5v7"/></svg>Sibling</button>
+      <button data-act="parent" title="Add parent"><svg class="i" viewBox="0 0 24 24"><circle cx="18" cy="12" r="2.5"/><path d="M4 12h11.5M8 8l-4 4 4 4"/></svg>Parent</button>
+      <span class="sep"></span>
+      <button data-act="rename" title="Rename (F2 or double-click)"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Rename</button>
+      <button data-act="details" title="Date and priority"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Date</button>
+      <button data-act="done" title="Mark done"><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><span>Done</span></button>
+      <button data-act="fold" title="Collapse or expand the branch"><svg class="i" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></svg><span>Fold</span></button>
+      <button data-act="attach" title="Attach a photo or PDF"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
+      <button data-act="link" title="Attach a link"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg></button>
+      <button data-act="note" title="Stick a note on it"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg></button>
+      <button data-act="delete" class="danger" title="Delete the branch (Delete)"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+    </div>
+    <input class="mm-edit" id="mmEdit" maxlength="160" autocomplete="off" spellcheck="true" aria-label="Node title">
     <div class="zoom">
       <button id="zImg" title="Pin a photo or PDF (or paste with Ctrl+V)" aria-label="Pin a photo or PDF"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
       <button id="zNote" title="Add a sticky note" aria-label="Add a sticky note"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg></button>
@@ -748,13 +789,17 @@ const CATS = {
   founder: ["Product", "Customers", "Fundraising", "Team", "Other"]
 };
 // Separate boards on the same site: /hari, /keerthi and /indira have one parent node and their own saved data.
-const PROFILES = { hari: { name: "Hari Haran" }, keerthi: { name: "Keerthilakshmi" }, indira: { name: "Indira" } };
+const PROFILES = { hari: { name: "Hari Haran" }, keerthi: { name: "Keerthilakshmi" }, indira: { name: "Indira" },
+  plan: { name: "Founder plan", center: "Plan", cats: ["Other"] } }; // /plan: you + your co-founder, a mind map
 const PROFILE = (() => {
   const u = (location.pathname.replace(/^\/+|\/+$/g, "") || new URLSearchParams(location.search).get("u") || "").toLowerCase();
   return PROFILES[u] ? u : "";
 })();
 const SINGLE = !!PROFILE;
-if (SINGLE) CATS.student = ["Exam", "Assignment", "Project", "Lab", "Work", "Personal", "Other"]; // everything lives on one side
+if (SINGLE) CATS.student = PROFILES[PROFILE].cats || ["Exam", "Assignment", "Project", "Lab", "Work", "Personal", "Other"]; // everything lives on one side
+const PLAN = PROFILE === "plan";
+if (PLAN) document.documentElement.classList.add("plan");
+const CENTER = (PROFILE && PROFILES[PROFILE].center) || "You";
 const pkey = k => PROFILE ? k + "@" + PROFILE : k; // localStorage key for this board
 if (SINGLE) {
   document.documentElement.classList.add("single");
@@ -824,7 +869,7 @@ const bursts = {}; // node id -> time it was completed, for the little celebrati
 function celebrate(id) { bursts[id] = performance.now(); haptic(14); }
 
 /* ================= persistence ================= */
-let syncTimer = null;
+let syncTimer = null, dirty = false, lastSeen = "";
 function api(path, opts = {}) {
   if (PROFILE && /^\/api\/(items|chat)$/.test(path)) path += "?u=" + PROFILE;
   opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, passKey ? { "X-Zia-Key": passKey } : {});
@@ -837,7 +882,11 @@ function persist() {
   catch (e) { if (!persist.warned) { persist.warned = true; toast("This browser's storage is full. Run Zia through the server to keep more images."); } }
   if (SERVER && serverReady) {
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => api("/api/items", { method: "PUT", body: JSON.stringify({ items, chat: chat.slice(-80), images }) }).catch(() => {}), 400);
+    dirty = true;
+    syncTimer = setTimeout(() => {
+      const body = JSON.stringify({ items, chat: chat.slice(-80), images });
+      api("/api/items", { method: "PUT", body }).then(r => { if (r.ok) lastSeen = body; }).catch(() => {}).finally(() => { dirty = false; });
+    }, 400);
   }
 }
 function update() {
@@ -877,6 +926,7 @@ function jitter(id, salt) { // deterministic value in [-0.5, 0.5) from a node id
   return ((h >>> 0) % 10000) / 10000 - .5;
 }
 function build() {
+  if (PLAN) return buildTree();
   const keep = G.byId, now = performance.now(), nodes = [], links = [];
   const add = (id, kind, extra, from) => {
     const old = keep[id];
@@ -934,6 +984,10 @@ function build() {
 
 function physics() {
   const N = G.nodes, a = G.alpha;
+  if (PLAN) { // mind map: nodes glide to their tree slots
+    N.forEach(n => { if (G.drag && G.drag.node === n) return; n.x += (n.tx - n.x) * .2; n.y += (n.ty - n.y) * .2; });
+    G.alpha *= .96; return;
+  }
   if (a < .01) return;
   for (let i = 0; i < N.length; i++) {
     const p = N[i];
@@ -998,6 +1052,8 @@ function fit(instant, nodes = G.nodes) {
   if (!G.W || !nodes.length) return;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   nodes.forEach(n => {
+    const nx = PLAN ? n.tx : n.x, ny = PLAN ? n.ty : n.y;
+    if (PLAN) { x0 = Math.min(x0, nx - n.r - 20); x1 = Math.max(x1, nx + n.r + 30 + n.lw); y0 = Math.min(y0, ny - 34); y1 = Math.max(y1, ny + 30); return; }
     const px = n.r + (n.kind === "item" ? Math.max(70, (n.lw || 0) / 2 + 10) : 40), py = n.r + (n.kind === "item" ? 44 * G.ls : 30);
     x0 = Math.min(x0, n.x - px); x1 = Math.max(x1, n.x + px); y0 = Math.min(y0, n.y - py); y1 = Math.max(y1, n.y + py);
   });
@@ -1011,6 +1067,9 @@ function fit(instant, nodes = G.nodes) {
   if (isMobile() && !fit.all) k = Math.max(k, .52); // phones: keep text readable (~9-10px); drag to see the edges
   fit.all = false;
   const t = { k, x: -(x0 + x1) / 2 * k + (pad.l - pad.r) / 2, y: -(y0 + y1) / 2 * k + (pad.t - pad.b) / 2 };
+  if (PLAN && isMobile() && nodes === G.nodes && (x1 - x0) * Math.max(k, .72) > G.W) { // phones: readable map, topics pinned to the left edge, scroll right along branches
+    t.k = Math.max(k, .72); t.x = 12 - G.W / 2 - x0 * t.k; t.y = -(y0 + y1) / 2 * t.k + (pad.t - pad.b) / 2;
+  }
   if (instant) { G.cam = t; G.target = null; } else G.target = t;
 }
 function zoomAt(sx, sy, f, smooth) { // smooth: ease toward the new zoom instead of jumping (wheel, buttons)
@@ -1022,6 +1081,7 @@ function zoomAt(sx, sy, f, smooth) { // smooth: ease toward the new zoom instead
   G.userCam = true; G.inert = null;
 }
 function nodeAt(sx, sy) {
+  if (PLAN) return mmHit(sx, sy);
   const p = toWorld(sx, sy);
   let best = null, bd = Infinity;
   for (const n of G.nodes) {
@@ -1032,7 +1092,7 @@ function nodeAt(sx, sy) {
 }
 function focusSet() {
   const n = G.sel ? G.byId[G.sel] : G.hover;
-  if (!n || n.kind === "me") return null;
+  if (PLAN || !n || n.kind === "me") return null;
   const s = new Set([n.id, "me"]);
   if (n.kind === "item") { s.add(n.parent.id); s.add(n.parent.parent.id); }
   else if (n.kind === "cat") { s.add(n.parent.id); G.nodes.forEach(m => { if (m.parent === n) s.add(m.id); }); }
@@ -1061,6 +1121,7 @@ function draw() {
   ctx.translate(W / 2 + cam.x, H / 2 + cam.y);
   ctx.scale(k, k);
   const fs = focusSet();
+  if (PLAN) { drawImages(null); drawTree(now); return; }
 
   G.links.forEach(l => {
     const { a, b } = l, col = sideColor(b.side), faded = fs && !(fs.has(a.id) && fs.has(b.id));
@@ -1349,7 +1410,7 @@ function drawOrb(r) {
   ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.arc(0, 0, R - 1.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
   ctx.fillStyle = "#fff"; ctx.font = `600 ${14 * r / 46}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("You", 0, 1);
+  ctx.fillText(CENTER, 0, 1);
 }
 
 function frame(ts) {
@@ -1369,6 +1430,7 @@ function frame(ts) {
   else G.level *= .9;
   draw();
   positionCard();
+  if (mmEditing) placeMmEdit();
   requestAnimationFrame(frame);
 }
 
@@ -1381,6 +1443,7 @@ function resize() {
   const ls = isMobile() ? 1.45 : 1; // bigger labels on phones so they stay readable
   if (ls !== G.ls) { G.ls = ls; if (G.nodes.length) { G.first = true; build(); } }
   if (!G.userCam) fit(true);
+  if (PLAN) renderBar();
 }
 
 /* pointer: drag nodes, pan, pinch, wheel zoom, click */
@@ -1448,6 +1511,7 @@ function pointerEnd(e) {
     }
     persist();
   }
+  if (PLAN && D && D.node && D.moved) mmDrop(D.node, e);
   if (D && !D.moved && e.type === "pointerup") { if (D.img) selectImage(D.img); else clickNode(D.hit); }
 }
 canvas.addEventListener("pointerup", pointerEnd);
@@ -1494,6 +1558,7 @@ $("#zFit").onclick = () => { G.userCam = true; fit.all = true; fit(false); }; //
 
 /* node card */
 function showCard(n) {
+  if (PLAN) { renderBar(); return; }
   const it = n.item, card = $("#card");
   card.replaceChildren();
   card.append(el("h4", null, it.text));
@@ -1517,7 +1582,7 @@ function showCard(n) {
   card.classList.add("on");
   positionCard();
 }
-function hideCard() { $("#card").classList.remove("on"); }
+function hideCard() { $("#card").classList.remove("on"); if (PLAN) renderBar(); }
 function positionCard() {
   const card = $("#card");
   if (!card.classList.contains("on")) return;
@@ -1537,7 +1602,7 @@ function positionCard() {
 }
 
 /* attachment card + adding/removing photos, PDFs and links */
-const nodeName = t => t.item ? t.item.text : t.kind === "me" ? "You" : t.label;
+const nodeName = t => t.item ? t.item.text : t.kind === "me" ? CENTER : t.label;
 const KIND_LABEL = { image: "Photo", pdf: "PDF", link: "Link", note: "Note" };
 function selectImage(im) {
   G.selImg = im.id; G.sel = null;
@@ -2004,6 +2069,7 @@ $("#btnNew").onclick = $("#btnNew2").onclick = () => openEditor(null);
 
 /* ================= agent ================= */
 function applyActions(actions) {
+  const added = []; // ids of nodes added in this reply, for "new:1" parents on the plan board
   const chips = [], norm = s => s === "founder" && !SINGLE ? "founder" : "student";
   (Array.isArray(actions) ? actions : []).slice(0, 15).forEach(a => {
     if (!a || typeof a !== "object") return;
@@ -2029,6 +2095,11 @@ function applyActions(actions) {
       const side = norm(a.side);
       const it = { id: uid(), text, side, cat: CATS[side].includes(a.cat) ? a.cat : "Other", pri: [1, 2, 3].includes(+a.pri) ? +a.pri : 2,
         due: validDate(a.due), done: false, doneAt: null, created: Date.now() };
+      if (PLAN) {
+        const ref = String(a.parent || ""), m = /^new:(\d+)$/.exec(ref);
+        it.parent = m ? (added[+m[1] - 1] || "") : items.some(i => i.id === ref) ? ref : "";
+        added.push(it.id);
+      }
       items.push(it);
       chips.push({ label: "+ " + text + (it.due ? " · " + dueLabel(it.due) : ""), id: it.id, side });
       return;
@@ -2045,6 +2116,7 @@ function applyActions(actions) {
       if (!CATS[it.side].includes(it.cat)) it.cat = "Other";
       if ([1, 2, 3].includes(+a.pri)) it.pri = +a.pri;
       if ("due" in a) it.due = validDate(a.due);
+      if (PLAN && "parent" in a) { const p = String(a.parent || ""); if (!p || (items.some(i => i.id === p) && p !== it.id && !descendants(it.id).has(p))) it.parent = p; }
       chips.push({ label: "✎ " + it.text + (it.due ? " · " + dueLabel(it.due) : ""), id: it.id, side: it.side });
     }
   });
@@ -2148,15 +2220,16 @@ async function runCommand(text) {
 }
 
 /* chat UI */
-const SUGGEST = SINGLE ? ["What should I focus on first?", "What exams do I have?", "Lab record due tomorrow", "Assignment due Friday, high priority"]
+const SUGGEST = PLAN ? ["Add a topic Launch, with Landing page and Pricing under it", "Under Pricing add Freemium tier", "Karthik: email investors by Friday", "What's still open?"]
+  : SINGLE ? ["What should I focus on first?", "What exams do I have?", "Lab record due tomorrow", "Assignment due Friday, high priority"]
   : ["What should I focus on first?", "DBMS record due tomorrow", "Investor call on Friday, high priority", "How balanced is my week?"];
 const animatedMsgs = new WeakSet();
 function renderChat() {
   const box = $("#msgs"); box.replaceChildren();
   if (!chat.length) {
     const w = el("div", "welcome");
-    w.append(el("div", "mini-orb"), el("h3", null, "What's on your plate?"),
-      el("p", null, (SINGLE ? "Tell Zia what you have. It keeps track, puts deadlines on your calendar and flags what needs attention." : "Tell Zia about coursework or company work. It keeps track, puts deadlines on your calendar and flags what needs attention.")));
+    w.append(el("div", "mini-orb"), el("h3", null, PLAN ? "Let's plan." : "What's on your plate?"),
+      el("p", null, PLAN ? "Map the meeting: topics on the left, ideas and steps branching right. Use the toolbar (Tab adds a child, Enter a sibling) or just tell Zia. You both see changes live." : (SINGLE ? "Tell Zia what you have. It keeps track, puts deadlines on your calendar and flags what needs attention." : "Tell Zia about coursework or company work. It keeps track, puts deadlines on your calendar and flags what needs attention.")));
     const s = el("div", "sugg");
     SUGGEST.forEach(q => { const b = el("button", null, q); b.onclick = () => runCommand(q); s.append(b); });
     w.append(s); box.append(w);
@@ -2510,6 +2583,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") { closeEditor(); closeLink(); closeNote(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && G.selImg && !typingInField) { e.preventDefault(); removeImage(G.selImg); return; }
   if (typingInField || $("#modal").classList.contains("on") || $("#linkModal").classList.contains("on") || $("#noteModal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (PLAN && mmKey(e)) return;
   if (e.code === "Space") { e.preventDefault(); session ? endSession() : startSession(); }
   else if (e.key === "/") { e.preventDefault(); switchTab("vAgent"); $("#askText").focus(); }
   else if (e.key === "n" || e.key === "N") { e.preventDefault(); openEditor(null); }
@@ -2544,7 +2618,262 @@ async function loadServer() {
     G.first = true; update(); renderChat();
   } catch (e) { setPill(false, "Offline"); }
 }
+// Plan board: two people edit it in the same meeting, so pick up the other person's changes every few seconds.
+async function pullPlan() {
+  if (!PLAN || !serverReady || dirty || document.hidden || G.drag || mmEditing || document.querySelector(".modal.on")) return;
+  try {
+    const r = await api("/api/items");
+    if (!r.ok) return;
+    const d = await r.json(), sig = JSON.stringify({ items: d.items, chat: d.chat, images: d.images });
+    if (sig === lastSeen || dirty) return;
+    lastSeen = sig;
+    items = d.items || []; chat = d.chat || []; images = d.images || [];
+    store.set(pkey("krefter_v2"), items); store.set(pkey("krefter_chat"), chat.slice(-80));
+    try { localStorage.setItem(pkey("krefter_images"), JSON.stringify(images)); } catch (e) {}
+    build(); renderStats(); renderTasks(); renderCal(); renderChat();
+    if (G.sel) { const n = G.byId[G.sel]; n ? showCard(n) : hideCard(); }
+  } catch (e) {}
+}
+if (PLAN) setInterval(pullPlan, 4000);
+/* ================= plan board: a mind map (topics on the left, branches to the right) ================= */
+// Items on /plan carry `parent` (another item's id, or "" for a topic) instead of living in categories.
+const MM = { rowH: 50, gapX: 64, wrap: 210 };
+const kidsOf = id => items.filter(i => (i.parent || "") === id && (id === "" || i.id !== id));
+function validParent(it) { return it.parent && items.some(i => i.id === it.parent) ? it.parent : ""; }
+function descendants(id) { // ids of everything under a node
+  const out = new Set(), walk = p => items.forEach(i => { if (i.parent === p && !out.has(i.id)) { out.add(i.id); walk(i.id); } });
+  walk(id); return out;
+}
+function mmWrap(text, font, max) { // up to two lines, then an ellipsis
+  ctx.font = font;
+  const words = String(text).split(/\s+/), lines = [];
+  let line = "";
+  for (const w of words) {
+    const t = line ? line + " " + w : w;
+    if (ctx.measureText(t).width <= max || !line) line = t; else { lines.push(line); line = w; }
+  }
+  lines.push(line);
+  if (lines.length > 2) { lines.length = 2; lines[1] = fitText(lines[1] + "…", max); }
+  else if (ctx.measureText(lines[lines.length - 1]).width > max) lines[lines.length - 1] = fitText(lines[lines.length - 1], max);
+  return lines;
+}
+function buildTree() {
+  const keep = G.byId, now = performance.now(), nodes = [], links = [], s = G.ls > 1 ? 1.15 : 1;
+  items.forEach(it => { const p = validParent(it); if (p !== (it.parent || "")) it.parent = p; });
+  const stats = {};
+  const count = id => { // done/total of everything under a node
+    if (stats[id]) return stats[id];
+    let t = 0, d = 0;
+    kidsOf(id).forEach(k => { const c = count(k.id); t += 1 + c.t; d += (k.done ? 1 : 0) + c.d; });
+    return (stats[id] = { t, d });
+  };
+  let y = 0;
+  const place = (it, x, depth, from) => { // returns the subtree's height; parents sit in the middle of their children
+    const kids = it.fold ? [] : kidsOf(it.id), hasKids = kidsOf(it.id).length > 0;
+    const font = `${hasKids || depth === 0 ? 600 : 500} ${(depth === 0 ? 14 : 13) * s}px ${FONT}`;
+    const lines = mmWrap(it.text, font, MM.wrap * s);
+    ctx.font = font;
+    let lw = Math.max(...lines.map(l => ctx.measureText(l).width), 20);
+    const st = count(it.id);
+    if (st.t) { ctx.font = `500 ${10.5 * s}px ${FONT}`; lw = Math.max(lw, ctx.measureText(`${st.d}/${st.t} done · 100%`).width); ctx.font = font; } // branch lines start past the "done" line too
+    const old = keep[it.id];
+    const n = { id: it.id, kind: "item", item: it, side: it.side, r: (hasKids || depth === 0 ? 11 : 8.5) * s, lines, font, lw, depth, hasKids,
+      stat: st, x: 0, y: 0, vx: 0, vy: 0, born: G.first ? now - 2000 : now };
+    if (old) Object.assign(n, { x: old.x, y: old.y, born: old.born });
+    else if (from) { n.x = from.x; n.y = from.y; }
+    nodes.push(n);
+    const rowH = MM.rowH * s * (lines.length > 1 ? 1.25 : 1);
+    const cx = x + n.r + 10 + lw + MM.gapX * s;
+    if (!kids.length) { n.tx = x; n.ty = y + rowH / 2; y += rowH; }
+    else {
+      const top = y;
+      kids.forEach(k => { const c = place(k, cx, depth + 1, n); links.push({ a: n, b: c }); });
+      n.tx = x; n.ty = (top + y) / 2;
+      if (y - top < rowH) y = top + rowH;
+    }
+    if (!old && !from) { n.x = n.tx; n.y = n.ty; }
+    return n;
+  };
+  kidsOf("").forEach((t, i) => { if (i) y += 26 * s; place(t, 0, 0, null); });
+  const midY = y / 2; // centre the map vertically on the origin
+  nodes.forEach(n => { n.ty -= midY; if (G.first || !keep[n.id] && !n.x && !n.y) { n.x = n.tx; n.y = n.ty; } });
+  G.nodes = nodes; G.links = links; G.byId = {};
+  nodes.forEach(n => G.byId[n.id] = n);
+  if (G.hover) G.hover = G.byId[G.hover.id] || null;
+  if (G.sel && !G.byId[G.sel]) G.sel = null;
+  if (G.first) { nodes.forEach(n => { n.x = n.tx; n.y = n.ty; }); G.first = false; G.alpha = .05; if (!G.userCam) fit(true); }
+  else G.alpha = Math.max(G.alpha, .9);
+  $("#hint").style.display = items.length ? "none" : "";
+  renderBar();
+}
+function drawTree(now) {
+  G.links.forEach(({ a, b }) => { // soft curves from the end of the parent's label to the child
+    const sx = a.x + a.r + 10 + a.lw + 10, ex = b.x - b.r - 3, mx = (sx + ex) / 2;
+    ctx.strokeStyle = rgba(C.ink3, b.item.done ? .2 : .38); ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(sx, a.y); ctx.bezierCurveTo(mx, a.y, mx, b.y, ex, b.y); ctx.stroke();
+  });
+  G.nodes.forEach(n => {
+    const it = n.item, sel = G.sel === n.id, hov = G.hover === n, col = it.done ? C.ok : C.accent;
+    const grow = easeBack(Math.min(1, (now - n.born) / 500)), r = n.r * grow * (hov ? 1.08 : 1);
+    if (r < 2) return; // still popping in
+    const b0 = bursts[n.id], bp = b0 ? (now - b0) / 700 : 1;
+    if (b0 && bp >= 1) delete bursts[n.id];
+    if (bp < 1) { ctx.globalAlpha = 1 - bp; ctx.strokeStyle = C.ok; ctx.lineWidth = 3 * (1 - bp); ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 4 + bp * 26, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    const u = urgency(it);
+    if (u) { ctx.strokeStyle = u === "over" ? C.danger : C.warn; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(n.x, n.y, r + 4, 0, 7); ctx.stroke(); }
+    if (sel) { ctx.fillStyle = rgba(C.accent, .16); ctx.beginPath(); ctx.arc(n.x, n.y, r + 7, 0, 7); ctx.fill(); }
+    if (n.hasKids || n.depth === 0 || it.done) { // filled: topics and branches (and finished leaves)
+      ctx.save(); ctx.shadowColor = rgba(col, .35); ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(n.x, n.y, r - 1.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+    } else { // ring: leaves still to do
+      ctx.fillStyle = C["surface-solid"]; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(n.x, n.y, r - 1, 0, 7); ctx.stroke();
+    }
+    if (it.done) {
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.8; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.beginPath(); ctx.moveTo(n.x - r * .4, n.y); ctx.lineTo(n.x - r * .1, n.y + r * .3); ctx.lineTo(n.x + r * .42, n.y - r * .3); ctx.stroke(); ctx.lineCap = "butt";
+    }
+    if (it.fold && kidsOf(it.id).length) { // folded: a "+N" bubble where the branch would be
+      const t = "+" + kidsOf(it.id).length, bx = n.x + n.r + 10 + n.lw + 12;
+      ctx.font = `600 ${10.5 * (G.ls > 1 ? 1.15 : 1)}px ${FONT}`;
+      const w = ctx.measureText(t).width + 12;
+      ctx.fillStyle = rgba(C.accent, .14); roundRect(bx, n.y - 9, w, 18, 9); ctx.fill();
+      ctx.fillStyle = C.accent; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(t, bx + w / 2, n.y + .5);
+    }
+    if (mmEditing === n.id) return; // the text box is drawn over it
+    const lx = n.x + n.r + 10, s = G.ls > 1 ? 1.15 : 1, lh = 16 * s, sub = n.stat.t ? 1 : 0;
+    const top = n.y - ((n.lines.length - 1) * lh + sub * 14 * s) / 2;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.font = n.font; ctx.lineJoin = "round";
+    n.lines.forEach((l, i) => {
+      ctx.lineWidth = 4; ctx.strokeStyle = C.bg; ctx.strokeText(l, lx, top + i * lh);
+      ctx.fillStyle = it.done ? C.ink3 : C.ink; ctx.fillText(l, lx, top + i * lh);
+    });
+    if (sub) {
+      const pct = Math.round(n.stat.d / n.stat.t * 100);
+      ctx.font = `500 ${10.5 * s}px ${FONT}`; ctx.fillStyle = C.ink3;
+      ctx.fillText(`${n.stat.d}/${n.stat.t} done · ${pct}%`, lx, top + (n.lines.length - 1) * lh + 15 * s);
+    }
+    if (it.due && !it.done) drawDueBadge(n, it);
+  });
+}
+function mmHit(sx, sy, skip) { // circle or label
+  const p = toWorld(sx, sy), pad = (isMobile() ? 10 : 4) / G.cam.k;
+  for (let i = G.nodes.length - 1; i >= 0; i--) {
+    const n = G.nodes[i];
+    if (skip && skip.has(n.id)) continue;
+    const h = Math.max(n.r, n.lines.length * 9 + (n.stat.t ? 8 : 0)) + pad;
+    if (p.x >= n.x - n.r - pad && p.x <= n.x + n.r + 12 + n.lw + pad && Math.abs(p.y - n.y) <= h) return n;
+  }
+  return null;
+}
+
+// ---- operations
+function mmNew(parent, at) { // a new node, placed after `at` among its siblings
+  const it = { id: uid(), text: "", side: "student", cat: "Other", pri: 2, due: "", done: false, doneAt: null, created: Date.now(), parent: parent || "" };
+  const idx = at ? items.indexOf(at) : -1;
+  if (idx >= 0) items.splice(idx + 1, 0, it); else items.push(it);
+  const p = parent && items.find(i => i.id === parent);
+  if (p) p.fold = false;
+  G.sel = it.id; update(); mmRename(it.id, true);
+  return it;
+}
+function mmAct(act) {
+  const it = G.sel && items.find(i => i.id === G.sel), n = it && G.byId[it.id];
+  if (act === "topic") return mmNew("", null);
+  if (!it) return;
+  if (act === "child") mmNew(it.id, kidsOf(it.id).slice(-1)[0] || null);
+  else if (act === "sibling") mmNew(it.parent || "", it);
+  else if (act === "parent") { // slot a new node between this one and its parent
+    const np = { id: uid(), text: "", side: "student", cat: "Other", pri: 2, due: "", done: false, doneAt: null, created: Date.now(), parent: it.parent || "" };
+    items.splice(items.indexOf(it), 0, np); it.parent = np.id;
+    G.sel = np.id; update(); mmRename(np.id, true);
+  }
+  else if (act === "rename") mmRename(it.id);
+  else if (act === "details") openEditor(it.id);
+  else if (act === "done") toggleDone(it.id);
+  else if (act === "fold") { it.fold = !it.fold; update(); }
+  else if (act === "attach") pickImages(n);
+  else if (act === "link") askLink(n);
+  else if (act === "note") openNote(null, n);
+  else if (act === "delete") mmDelete(it.id);
+}
+function mmDelete(id) {
+  const gone = new Set([id, ...descendants(id)]), before = items.slice();
+  const it = items.find(i => i.id === id);
+  items = items.filter(i => !gone.has(i.id));
+  G.sel = null; update();
+  toast(`Deleted ${it && it.text ? it.text : "node"}${gone.size > 1 ? ` and ${gone.size - 1} under it` : ""}`, () => { items = before; update(); });
+}
+function renderBar() {
+  const it = G.sel && items.find(i => i.id === G.sel);
+  document.querySelectorAll("#mmBar button").forEach(b => { if (b.dataset.act !== "topic") b.disabled = !it; });
+  const d = document.querySelector('#mmBar [data-act="done"] span'); if (d) d.textContent = it && it.done ? "Reopen" : "Done";
+  const f = document.querySelector('#mmBar [data-act="fold"] span'); if (f) f.textContent = it && it.fold ? "Unfold" : "Fold";
+  if (!isMobile() && G.W) $("#mmBar").style.left = (G.W - boardInsets().r) / 2 + "px";
+}
+document.querySelectorAll("#mmBar button").forEach(b => b.onclick = () => { haptic(8); b.blur(); mmAct(b.dataset.act); });
+
+// ---- rename in place
+let mmEditing = null, mmFresh = false;
+function mmRename(id, fresh) {
+  const n = G.byId[id];
+  if (!n) return;
+  mmEditing = id; mmFresh = !!fresh;
+  const box = $("#mmEdit");
+  box.value = n.item.text; box.classList.add("on"); placeMmEdit();
+  setTimeout(() => { box.focus(); box.select(); }, 20);
+}
+function placeMmEdit() {
+  const n = mmEditing && G.byId[mmEditing], box = $("#mmEdit");
+  if (!n) return;
+  const p = toScreen(n.x + n.r + 6, n.y), k = G.cam.k;
+  box.style.left = p.x + "px"; box.style.top = p.y - 16 + "px";
+  box.style.width = Math.max(180, (n.lw + 40) * k) + "px";
+}
+function mmCommit(keep) {
+  if (!mmEditing) return;
+  const it = items.find(i => i.id === mmEditing), box = $("#mmEdit"), v = box.value.trim().slice(0, 160);
+  const id = mmEditing; mmEditing = null; box.classList.remove("on"); box.blur();
+  if (!it) return;
+  if (keep && v) { it.text = v; update(); }
+  else if (!it.text) { items = items.filter(i => i.id !== id); if (G.sel === id) G.sel = it.parent || null; update(); } // empty new node: drop it
+  else update();
+}
+$("#mmEdit").addEventListener("keydown", e => {
+  if (["Enter", "Tab", "Escape"].includes(e.key)) e.stopPropagation(); // the board's own shortcuts mustn't fire too
+  if (e.key === "Enter") { e.preventDefault(); const id = mmEditing, fresh = mmFresh; mmCommit(true); const it = items.find(i => i.id === id); if (fresh && it && e.shiftKey) mmNew(it.parent || "", it); }
+  else if (e.key === "Tab") { e.preventDefault(); const id = mmEditing; mmCommit(true); const it = items.find(i => i.id === id); if (it) { G.sel = it.id; mmAct("child"); } }
+  else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); mmCommit(false); }
+});
+$("#mmEdit").addEventListener("blur", () => mmCommit(true));
+
+// ---- keyboard on the plan board
+function mmKey(e) {
+  if (e.key === "Tab") { e.preventDefault(); mmAct(G.sel ? "child" : "topic"); return true; }
+  if (!G.sel) return false;
+  if (e.key === "Enter") { e.preventDefault(); mmAct("sibling"); return true; }
+  if (e.key === "F2") { e.preventDefault(); mmAct("rename"); return true; }
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); mmAct("delete"); return true; }
+  return false;
+}
+// ---- drag a node onto another to move its whole branch there
+function mmDrop(n, e) {
+  const skip = new Set([n.id, ...descendants(n.id)]), over = mmHit(e.offsetX, e.offsetY, skip);
+  if (over && over.id !== n.item.parent) {
+    n.item.parent = over.id; over.item.fold = false;
+    items = items.filter(i => i !== n.item); items.push(n.item); // last child of its new parent
+    haptic(12); update(); toast(`Moved ${n.item.text} under ${over.item.text}`);
+  } else G.alpha = .9; // springs back into place
+}
+canvas.addEventListener("dblclick", e => { if (!PLAN) return; const n = mmHit(e.offsetX, e.offsetY); if (n) { G.sel = n.id; mmRename(n.id); } });
 async function boot() {
+  if (PLAN) $("#hint").textContent = "Press Tab or tap Topic to start the map, or just tell Zia what you're planning.";
+  if (!PROFILE || PLAN) { // only your own board and the plan link to each other
+    const b = $("#btnPlan"); b.hidden = false;
+    b.href = PLAN ? "/" : "/plan"; b.title = PLAN ? "Back to your board" : "Planning board for meetings with your co-founder";
+    b.querySelector("span").textContent = PLAN ? "My board" : "Plan";
+  }
   if (SINGLE) $("#brandSub").textContent = PROFILES[PROFILE].name;
   readColors(); if (settings.accent) applyAccent(settings.accent); syncToggles(); setOrb("idle");
   new ResizeObserver(resize).observe(canvas);
