@@ -121,7 +121,8 @@ def tree_system(u):
     return re.sub(r"Categories: .*\n", lambda m: (
         "This board is a mind map: topics on the left, ideas, steps and owners branching to the right.\n"
         "Put each new node under the node it belongs to (use ids from the list). A new subject is a top-level topic (empty parent).\n"
-        "To build a branch in one go, add the parent first and refer to it as \"new:1\", \"new:2\"... (1 = the first add action in your list).\n"), s)
+        "To build a branch in one go, add the parent first and refer to it as \"new:1\", \"new:2\"... (1 = the first add action in your list).\n"
+        "Example: \"add Launch with Landing page and Pricing under it\" -> three add actions: Launch (parent \"\"), Landing page (parent \"new:1\"), Pricing (parent \"new:1\"). Never put a whole branch in one title.\n"), s)
 
 
 def calendar(today):
