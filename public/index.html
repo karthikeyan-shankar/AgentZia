@@ -1414,6 +1414,10 @@ function drawOrb(r) {
 }
 
 function frame(ts) {
+  requestAnimationFrame(frame); // scheduled first, so one bad frame can't freeze (or blank) the board
+  try { step(ts); } catch (e) { if (!frame.err) { frame.err = true; console.error("Zia board:", e); } }
+}
+function step(ts) {
   G.t = ts / 1000;
   physics();
   if (!G.userCam && G.alpha > .04 && !G.drag && G.fc++ % 8 === 0) fit(false);
@@ -1431,7 +1435,6 @@ function frame(ts) {
   draw();
   positionCard();
   if (mmEditing) placeMmEdit();
-  requestAnimationFrame(frame);
 }
 
 function resize() {
@@ -2609,10 +2612,11 @@ async function loadServer() {
     const r = await api("/api/items");
     if (r.status === 401) { passKey = ""; store.set("krefter_key", ""); showLock(true); return; }
     const d = await r.json();
-    if (Array.isArray(d.items) && (d.items.length || !items.length)) {
+    if (Array.isArray(d.items) && (d.items.length || !items.length || PLAN)) { // plan: the shared copy wins over a stale local one
       items = d.items; chat = Array.isArray(d.chat) ? d.chat : [];
     }
-    if (Array.isArray(d.images) && (d.images.length || !images.length)) images = d.images;
+    if (Array.isArray(d.images) && (d.images.length || !images.length || PLAN)) images = d.images;
+    if (PLAN) lastSeen = JSON.stringify({ items: d.items, chat: d.chat, images: d.images });
     serverReady = true;
     setPill(AI.ok, AI.ok ? "AI on" : "AI off");
     G.first = true; update(); renderChat();
@@ -2769,13 +2773,22 @@ function mmHit(sx, sy, skip) { // circle or label
 }
 
 // ---- operations
+function mmShow(id) { // glide the camera so a node and its label are on screen
+  const n = G.byId[id];
+  if (!n) return;
+  const pad = boardInsets(), k = G.cam.k, p = toScreen(n.tx, n.ty);
+  const left = pad.l + 40, right = G.W - pad.r - 260, top = pad.t + 40, bottom = G.H - pad.b - (isMobile() ? 120 : 90);
+  if (p.x >= left && p.x <= right && p.y >= top && p.y <= bottom) return;
+  const cx = (left + Math.max(left, right)) / 2 - 80, cy = (top + bottom) / 2;
+  G.target = { k, x: G.cam.x + (cx - p.x), y: G.cam.y + (cy - p.y) }; G.userCam = true; G.inert = null;
+}
 function mmNew(parent, at) { // a new node, placed after `at` among its siblings
   const it = { id: uid(), text: "", side: "student", cat: "Other", pri: 2, due: "", done: false, doneAt: null, created: Date.now(), parent: parent || "" };
   const idx = at ? items.indexOf(at) : -1;
   if (idx >= 0) items.splice(idx + 1, 0, it); else items.push(it);
   const p = parent && items.find(i => i.id === parent);
   if (p) p.fold = false;
-  G.sel = it.id; update(); mmRename(it.id, true);
+  G.sel = it.id; update(); mmShow(it.id); mmRename(it.id, true);
   return it;
 }
 function mmAct(act) {
@@ -2787,9 +2800,9 @@ function mmAct(act) {
   else if (act === "parent") { // slot a new node between this one and its parent
     const np = { id: uid(), text: "", side: "student", cat: "Other", pri: 2, due: "", done: false, doneAt: null, created: Date.now(), parent: it.parent || "" };
     items.splice(items.indexOf(it), 0, np); it.parent = np.id;
-    G.sel = np.id; update(); mmRename(np.id, true);
+    G.sel = np.id; update(); mmShow(np.id); mmRename(np.id, true);
   }
-  else if (act === "rename") mmRename(it.id);
+  else if (act === "rename") { mmShow(it.id); mmRename(it.id); }
   else if (act === "details") openEditor(it.id);
   else if (act === "done") toggleDone(it.id);
   else if (act === "fold") { it.fold = !it.fold; update(); }
