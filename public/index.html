@@ -1184,7 +1184,7 @@ function imgSize(im) { // size of the floating card on the board
   const k = kindOf(im);
   if (k === "link") { const w = im.size || 230; return { w, h: w * (im.image ? .8 : .44) }; }
   if (k === "pdf") { const w = im.size || 160; return { w, h: w * ((im.h / im.w) || 1.3) + 30 }; }
-  if (k === "note") { const w = im.size || 180; return { w, h: Math.max(w * .78, 36 + noteLines(im, w).length * 19) }; }
+  if (k === "note") { const L = noteLayout(im), sc = noteScale(im); return { w: L.w * sc, h: L.h * sc }; }
   const w = im.size || 170;
   return { w, h: w * (im.h / im.w || .75) };
 }
@@ -1210,26 +1210,37 @@ function drawCover(img, x, y, w, h) { // like CSS object-fit: cover
 /* sticky notes: paper squares in soft colours, a strip of tape, a folded corner */
 const NOTE_COLORS = { yellow: "#ffe58a", pink: "#ffc4d8", mint: "#bff0d2", blue: "#c2e1ff", lavender: "#ddd2ff", peach: "#ffd4b2" };
 const noteCache = new WeakMap();
-function noteLines(im, w) { // word-wrapped lines, cached until the text or width changes
-  const key = w + "|" + im.text, c = noteCache.get(im);
-  if (c && c.key === key) return c.lines;
-  ctx.save(); ctx.font = `500 14px ${FONT}`;
-  const lines = [];
-  String(im.text || "").split("\n").forEach(par => {
+// A note is laid out once at its natural size (fits its text: short text = small note), then drawn scaled,
+// so making a note bigger makes its text bigger too.
+const NOTE = { font: 14, lh: 19, pad: 13, top: 27, bottom: 22, maxW: 210, minW: 92, minH: 64 };
+function noteLayout(im) { // natural size + word-wrapped lines, cached until the text changes
+  const key = String(im.text || ""), c = noteCache.get(im);
+  if (c && c.key === key) return c;
+  ctx.save(); ctx.font = `500 ${NOTE.font}px ${FONT}`;
+  const lines = [], room = NOTE.maxW - NOTE.pad * 2;
+  key.split("\n").forEach(par => {
     let line = "";
     par.split(/\s+/).forEach(word => {
       const t = line ? line + " " + word : word;
-      if (ctx.measureText(t).width <= w - 26 || !line) line = t; else { lines.push(line); line = word; }
+      if (ctx.measureText(t).width <= room || !line) line = t; else { lines.push(line); line = word; }
     });
     lines.push(line);
   });
+  const shown = lines.slice(0, 14);
+  if (lines.length > 14) shown[13] = fitText(shown[13] + "…", room);
+  const lw = Math.max(...shown.map(l => ctx.measureText(l).width), 0);
   ctx.restore();
-  noteCache.set(im, { key, lines: lines.slice(0, 14) });
-  return lines.slice(0, 14);
+  const w = Math.max(NOTE.minW, Math.min(NOTE.maxW, Math.ceil(lw) + NOTE.pad * 2 + 6));
+  const h = Math.max(NOTE.minH, NOTE.top + (shown.length - 1) * NOTE.lh + NOTE.bottom);
+  const out = { key, lines: shown, w, h };
+  noteCache.set(im, out);
+  return out;
 }
+// Older notes were saved with a fixed size of 180; only sizes set with − / + (sizeSet) scale a note.
+const noteScale = im => im.sizeSet && im.size ? im.size / noteLayout(im).w : 1;
 function drawNote(im, p, s, sel) {
-  const tilt = jitter(im.id, 3) * .07, w = s.w, h = s.h;
-  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(tilt);
+  const tilt = jitter(im.id, 3) * .07, L = noteLayout(im), sc = noteScale(im), w = L.w, h = L.h;
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(tilt); ctx.scale(sc, sc); // everything inside, text included, grows with the note
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.2)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 7;
   ctx.fillStyle = NOTE_COLORS[im.color] || NOTE_COLORS.yellow;
@@ -1238,9 +1249,9 @@ function drawNote(im, p, s, sel) {
   ctx.fillStyle = "rgba(0,0,0,.1)"; // folded corner
   ctx.beginPath(); ctx.moveTo(w / 2, h / 2 - 18); ctx.lineTo(w / 2 - 18, h / 2 - 18); ctx.lineTo(w / 2 - 18, h / 2); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.save(); ctx.rotate(-tilt * 2); ctx.fillRect(-26, -h / 2 - 8, 52, 16); ctx.restore(); // tape
-  if (sel) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8); }
-  ctx.fillStyle = "#23262b"; ctx.font = `500 14px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  noteLines(im, w).forEach((l, i) => ctx.fillText(l, -w / 2 + 13, -h / 2 + 28 + i * 19));
+  if (sel) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2 / sc; ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8); }
+  ctx.fillStyle = "#23262b"; ctx.font = `500 ${NOTE.font}px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  L.lines.forEach((l, i) => ctx.fillText(l, -w / 2 + NOTE.pad, -h / 2 + NOTE.top + i * NOTE.lh));
   ctx.restore();
 }
 function drawImages(fs) {
@@ -1654,9 +1665,17 @@ function selectImage(im) {
   const open = el("button", "btn primary grow", k === "note" ? "Edit" : "Open");
   open.onclick = () => k === "note" ? openNote(im) : k === "image" ? openViewer(im) : window.open(k === "pdf" ? im.src : im.url, "_blank", "noopener");
   const smaller = el("button", "btn", "−"); smaller.title = "Smaller"; smaller.setAttribute("aria-label", "Smaller");
-  smaller.onclick = () => { im.size = Math.max(100, (im.size || imgSize(im).w) - 40); persist(); };
+  smaller.onclick = () => {
+    if (k === "note") { im.size = Math.max(noteLayout(im).w * .6, imgSize(im).w / 1.2); im.sizeSet = true; } // notes scale as a whole, text too
+    else im.size = Math.max(100, (im.size || imgSize(im).w) - 40);
+    persist();
+  };
   const bigger = el("button", "btn", "+"); bigger.title = "Bigger"; bigger.setAttribute("aria-label", "Bigger");
-  bigger.onclick = () => { im.size = Math.min(520, (im.size || imgSize(im).w) + 40); persist(); };
+  bigger.onclick = () => {
+    if (k === "note") { im.size = Math.min(noteLayout(im).w * 4, imgSize(im).w * 1.2); im.sizeSet = true; }
+    else im.size = Math.min(520, (im.size || imgSize(im).w) + 40);
+    persist();
+  };
   const del = el("button", "btn danger", "Delete"); del.onclick = () => removeImage(im.id);
   acts.append(open, smaller, bigger);
   if (owner) {
@@ -1869,7 +1888,7 @@ function openNote(im, target) {
 }
 function closeNote() { $("#noteModal").classList.remove("on"); noteEditing = null; }
 function addNote(text, opts = {}) {
-  return placeAttachment({ id: uid(), kind: "note", text: String(text).slice(0, 400), color: opts.color || "yellow", size: 180 }, opts);
+  return placeAttachment({ id: uid(), kind: "note", text: String(text).slice(0, 400), color: opts.color || "yellow" }, opts); // sized by its text
 }
 $("#noteForm").addEventListener("submit", e => {
   e.preventDefault();
@@ -2897,7 +2916,10 @@ function renderBar() {
   const c = $("#mmCount"); c.textContent = many ? G.multi.size + " selected" : ""; c.classList.toggle("on", many);
   const d = document.querySelector('#mmBar [data-act="done"] span'); if (d) d.textContent = it && it.done ? "Reopen" : "Done";
   const f = document.querySelector('#mmBar [data-act="fold"] span'); if (f) f.textContent = it && it.fold ? "Unfold" : "Fold";
-  if (!isMobile() && G.W) $("#mmBar").style.left = (G.W - boardInsets().r) / 2 + "px";
+  if (!isMobile() && G.W) { // centred in the free board area, clear of the zoom buttons
+    const free = G.W - boardInsets().r;
+    $("#mmBar").style.left = free / 2 + "px"; $("#mmBar").style.maxWidth = Math.max(320, free - 150) + "px";
+  }
 }
 document.querySelectorAll("#mmBar button").forEach(b => b.onclick = () => { haptic(8); b.blur(); mmAct(b.dataset.act); });
 
