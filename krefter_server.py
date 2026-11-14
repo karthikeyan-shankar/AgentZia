@@ -216,10 +216,11 @@ def store_path(u):
 def read_store(u=""):
     with store_lock:
         if not os.path.exists(store_path(u)):
-            return {"items": [], "chat": [], "images": []}
+            return {"items": [], "chat": [], "images": [], "rnd": []}
         with open(store_path(u), "r", encoding="utf-8") as f:
             data = json.load(f)
         data.setdefault("images", [])
+        data.setdefault("rnd", [])
         return data
 
 
@@ -310,7 +311,9 @@ class Handler(BaseHTTPRequestHandler):
             items = [i for i in req.get("items", []) if isinstance(i, dict)][:2000]
             chat = [m for m in req.get("chat", []) if isinstance(m, dict)][-100:]
             images = [m for m in req.get("images", []) if isinstance(m, dict)][:500]
-            write_store({"items": items, "chat": chat, "images": images}, u)
+            # rnd = the plan board's research wall; older pages don't send it, so keep what's stored
+            rnd = [m for m in req["rnd"] if isinstance(m, dict)][:1500] if isinstance(req.get("rnd"), list) else read_store(u).get("rnd", [])
+            write_store({"items": items, "chat": chat, "images": images, "rnd": rnd}, u)
             self.send_json(200, {"ok": True})
         except Exception as e:
             self.send_json(400, {"error": type(e).__name__})

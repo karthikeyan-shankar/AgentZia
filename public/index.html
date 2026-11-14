@@ -629,6 +629,64 @@
     body.panel-closed .hint { left: 50%; }
     body.panel-closed #btnPanel { color: var(--accent); }
   }
+
+  /* ===== plan board: Map / R&D switch and the research wall ===== */
+  .vswitch { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); z-index: 6; display: none; padding: 4px; border-radius: 999px;
+    background: var(--lq-read); backdrop-filter: var(--lq-blur); -webkit-backdrop-filter: var(--lq-blur); box-shadow: var(--lq-drop), var(--lq-glow); }
+  .plan .vswitch { display: flex; }
+  .vswitch button { height: 32px; padding: 0 20px; font-size: 13px; font-weight: 600; color: var(--ink2); border-radius: 999px; }
+  .vswitch button.on { color: var(--ink); }
+  .rnd { position: absolute; z-index: 5; left: 12px; right: 12px; top: 134px; bottom: 14px; display: none; gap: 14px; overflow-x: auto; overflow-y: hidden;
+    padding: 2px 4px 10px; scroll-snap-type: x proximity; }
+  .rnd-on .rnd { display: flex; }
+  .rnd-on #graph { visibility: hidden; } /* hidden, not removed: the board keeps its size for layout maths */
+  .rnd-on .mmbar, .rnd-on .zoom, .rnd-on .legend, .rnd-on .hint, .rnd-on .card { display: none !important; }
+  .rnd-col { flex: 0 0 282px; display: flex; flex-direction: column; max-height: 100%; border-radius: 22px; scroll-snap-align: start;
+    background: var(--lq-read); backdrop-filter: var(--lq-blur); -webkit-backdrop-filter: var(--lq-blur); box-shadow: var(--lq-drop), var(--lq-glow); }
+  .rnd-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px 16px; }
+  .rnd-head i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
+  .rnd-head b { font-size: 12.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
+  .rnd-head input { flex: 1; min-width: 0; font: 700 12.5px/1.2 inherit; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); background: var(--surface-solid); border: 1.5px solid var(--accent); border-radius: 8px; padding: 3px 6px; outline: none; }
+  .rnd-head .n { font-size: 11.5px; font-weight: 600; color: var(--ink3); background: var(--g-fill); border-radius: 999px; padding: 1px 8px; }
+  .rnd-head button { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--ink2); flex: none; }
+  .rnd-head button:hover { background: var(--g-fill); color: var(--ink); }
+  .rnd-head svg.i { width: 15px; height: 15px; }
+  .rnd-list { flex: 1; overflow-y: auto; padding: 4px 10px 6px; display: flex; flex-direction: column; gap: 9px; min-height: 48px; }
+  .rnd-card { position: relative; padding: 11px 12px 11px 14px; border-radius: 14px; background: color-mix(in srgb, var(--cc, transparent) 9%, var(--surface-solid));
+    border-left: 4px solid var(--cc, var(--line2)); box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(16,24,40,.07); cursor: grab; touch-action: none;
+    transition: transform .35s var(--spring), box-shadow .25s; animation: msgIn .35s var(--spring); }
+  .rnd-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,.08), 0 10px 26px rgba(16,24,40,.12); }
+  .rnd-card .t { font-size: 13.5px; line-height: 1.45; color: var(--ink); white-space: pre-wrap; word-break: break-word; min-height: 19px; }
+  .rnd-card .t.empty { color: var(--ink3); }
+  .rnd-card textarea { width: 100%; resize: none; border: 0; outline: none; background: transparent; font: 13.5px/1.45 inherit; color: var(--ink); padding: 0; min-height: 40px; cursor: text; }
+  .rnd-card .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .rnd-card .meta:empty { display: none; }
+  .rnd-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; font-size: 11.5px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 999px; padding: 3px 9px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rnd-chip.done { color: var(--ink3); background: var(--g-fill); }
+  .rnd-acts { position: absolute; top: 6px; right: 6px; display: flex; gap: 2px; opacity: 0; transition: opacity .2s; background: var(--surface-solid); border-radius: 999px; padding: 2px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  .rnd-card:hover .rnd-acts, .rnd-card.sel .rnd-acts { opacity: 1; }
+  .rnd-acts button { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--ink2); }
+  .rnd-acts button:hover { background: var(--g-fill); color: var(--ink); }
+  .rnd-acts button.del:hover { color: var(--danger); }
+  .rnd-acts svg.i { width: 14px; height: 14px; }
+  .rnd-pop { position: fixed; z-index: 40; padding: 8px; border-radius: 16px; display: flex; gap: 6px; flex-wrap: wrap; max-width: 260px;
+    background: var(--lq-read); backdrop-filter: var(--lq-blur); -webkit-backdrop-filter: var(--lq-blur); box-shadow: var(--lq-drop), var(--lq-glow); animation: glassIn .3s var(--spring); }
+  .rnd-pop .sw { width: 26px; height: 26px; }
+  .rnd-pop select { min-width: 220px; }
+  .rnd-add { margin: 4px 10px 12px; height: 36px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--ink3); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .rnd-add:hover { background: var(--g-fill); color: var(--ink); }
+  .rnd-newcol { flex: 0 0 200px; align-self: flex-start; height: 48px; border-radius: 18px; border: 1.5px dashed var(--line2); color: var(--ink3); font-size: 13px; font-weight: 600; }
+  .rnd-newcol:hover { color: var(--ink); border-color: var(--ink3); }
+  .rnd-ghost { border: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--accent) 6%, transparent); flex: none; }
+  .rnd-float { position: fixed; z-index: 50; pointer-events: none; transform: rotate(2.5deg) scale(1.03); box-shadow: 0 18px 44px rgba(0,0,0,.25) !important; transition: none; animation: none; }
+  .rnd-empty { font-size: 12.5px; color: var(--ink3); text-align: center; padding: 10px 6px 4px; }
+  @media (max-width: 860px) {
+    .vswitch { top: calc(70px + env(safe-area-inset-top)); }
+    .rnd { top: calc(116px + env(safe-area-inset-top)); bottom: calc(130px + env(safe-area-inset-bottom)); left: 0; right: 0; padding: 2px 12px 10px; scroll-snap-type: x mandatory; }
+    .rnd-col { flex-basis: 84vw; }
+    .rnd-acts { position: static; opacity: 1; justify-content: flex-end; margin: 6px -4px -4px 0; background: transparent; box-shadow: none; } /* own row under the text */
+  }
 </style>
 </head>
 <body>
@@ -661,6 +719,8 @@
     <canvas id="graph" aria-label="Map of your tasks"></canvas>
     <div class="legend"><span><i style="background:var(--student)"></i>Student</span><span><i style="background:var(--founder)"></i>Founder</span><span><i style="border:2px solid var(--danger)"></i>Overdue</span><span><i style="border:2px solid var(--warn)"></i>Due soon</span></div>
     <div class="hint" id="hint">Press <kbd>Space</kbd> to turn on the mic, then just talk. I'll keep listening.</div>
+    <div class="vswitch seg" id="vSwitch" role="tablist" aria-label="Plan view"><button data-v="map" class="on" role="tab">Map</button><button data-v="rnd" role="tab">R&amp;D</button></div>
+    <div class="rnd" id="rnd" aria-label="Research wall"></div>
     <div class="mmbar" id="mmBar" role="toolbar" aria-label="Mind map">
       <button data-act="select" title="Box-select: drag on empty space to pick nodes (or Shift+drag)"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/></svg>Select</button>
       <button data-act="all" title="Select every node (Ctrl+A)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>All</button>
@@ -843,7 +903,8 @@ const store = {
 
 let items = store.get(pkey("krefter_v2"), null) || (SINGLE ? [] : store.get("krefter", []));
 let chat = store.get(pkey("krefter_chat"), []);
-let images = store.get(pkey("krefter_images"), []); // pictures pinned on the board: {id, src, w, h, size, attach, dx, dy, x, y}
+let images = store.get(pkey("krefter_images"), []);
+let rnd = store.get(pkey("krefter_rnd"), []); // plan board research wall // pictures pinned on the board: {id, src, w, h, size, attach, dx, dy, x, y}
 const settings = Object.assign({ voiceOn: true, accent: "#0d9488", theme: "light" }, store.get("krefter_settings", {}));
 const SERVER = location.protocol.startsWith("http");
 const AI = { ok: false };
@@ -902,13 +963,14 @@ function api(path, opts = {}) {
 function persist() {
   store.set(pkey("krefter_v2"), items);
   store.set(pkey("krefter_chat"), chat.slice(-80));
+  store.set(pkey("krefter_rnd"), rnd);
   try { localStorage.setItem(pkey("krefter_images"), JSON.stringify(images)); }
   catch (e) { if (!persist.warned) { persist.warned = true; toast("This browser's storage is full. Run Zia through the server to keep more images."); } }
   if (SERVER && serverReady) {
     clearTimeout(syncTimer);
     dirty = true;
     syncTimer = setTimeout(() => {
-      const body = JSON.stringify({ items, chat: chat.slice(-80), images });
+      const body = JSON.stringify({ items, chat: chat.slice(-80), images, rnd });
       api("/api/items", { method: "PUT", body }).then(r => { if (r.ok) lastSeen = body; }).catch(() => {}).finally(() => { dirty = false; });
     }, 400);
   }
@@ -1467,6 +1529,7 @@ function step(ts) {
   }
   if (G.orb === "speaking") G.level = Math.max(G.level * .94, .25 + .2 * Math.sin(G.t * 7));
   else G.level *= .9;
+  if (PLAN && rndView) return; // the map is hidden behind the research wall
   draw();
   positionCard();
   if (mmEditing) placeMmEdit();
@@ -1481,7 +1544,7 @@ function resize() {
   const ls = isMobile() ? 1.45 : 1; // bigger labels on phones so they stay readable
   if (ls !== G.ls) { G.ls = ls; if (G.nodes.length) { G.first = true; build(); } }
   if (!G.userCam) fit(true);
-  if (PLAN) renderBar();
+  if (PLAN) { renderBar(); rndPlace(); }
 }
 
 /* pointer: drag nodes, pan, pinch, wheel zoom, click */
@@ -2534,7 +2597,7 @@ function switchTab(id) {
   if (cur) haptic(5);
 }
 // Sliding glass selector for segmented controls: one pill glides to the chosen option.
-const SEGS = [".tabs", "#filter", "#edSide", "#edPri"];
+const SEGS = [".tabs", "#filter", "#edSide", "#edPri", "#vSwitch"];
 function moveThumb(box) {
   if (!box) return;
   let th = box.querySelector(":scope > .seg-thumb");
@@ -2613,7 +2676,7 @@ function setPill(on, text) { const p = $("#aiPill"); p.textContent = text; p.cla
 
 $("#btnExport").onclick = () => {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify({ items, chat, images }, null, 2)], { type: "application/json" }));
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ items, chat, images, rnd }, null, 2)], { type: "application/json" }));
   a.download = "zia-backup-" + localISO(new Date()) + ".json"; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
@@ -2635,11 +2698,11 @@ $("#file").onchange = e => {
 
 document.addEventListener("keydown", e => {
   const typingInField = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "");
-  if (e.key === "Escape") { if (PLAN) mmClearSel(); closeEditor(); closeLink(); closeNote(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
+  if (e.key === "Escape") { document.querySelectorAll(".rnd-pop").forEach(p => p.remove()); if (PLAN) mmClearSel(); closeEditor(); closeLink(); closeNote(); $("#viewer").classList.remove("on"); G.sel = null; G.selImg = null; hideCard(); if (ttsActive && window.speechSynthesis) speechSynthesis.cancel(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && G.selImg && !typingInField) { e.preventDefault(); removeImage(G.selImg); return; }
   if (PLAN && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a" && !typingInField && !document.querySelector(".modal.on")) { e.preventDefault(); mmSelectAll(); return; }
   if (typingInField || $("#modal").classList.contains("on") || $("#linkModal").classList.contains("on") || $("#noteModal").classList.contains("on") || $("#lock").classList.contains("on") || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (PLAN && mmKey(e)) return;
+  if (PLAN && !rndView && mmKey(e)) return; // map editing keys only on the map view
   if (e.code === "Space") { e.preventDefault(); session ? endSession() : startSession(); }
   else if (e.key === "/") { e.preventDefault(); setPanel(true); switchTab("vAgent"); $("#askText").focus(); }
   else if (e.key === "n" || e.key === "N") { e.preventDefault(); openEditor(null); }
@@ -2670,7 +2733,8 @@ async function loadServer() {
       items = d.items; chat = Array.isArray(d.chat) ? d.chat : [];
     }
     if (Array.isArray(d.images) && (d.images.length || !images.length || PLAN)) images = d.images;
-    if (PLAN) lastSeen = JSON.stringify({ items: d.items, chat: d.chat, images: d.images });
+    if (Array.isArray(d.rnd) && (d.rnd.length || !rnd.length || PLAN)) rnd = d.rnd;
+    if (PLAN) lastSeen = JSON.stringify({ items: d.items, chat: d.chat, images: d.images, rnd: d.rnd || [] });
     serverReady = true;
     setPill(AI.ok, AI.ok ? "AI on" : "AI off");
     G.first = true; update(); renderChat();
@@ -2678,14 +2742,15 @@ async function loadServer() {
 }
 // Plan board: two people edit it in the same meeting, so pick up the other person's changes every few seconds.
 async function pullPlan() {
-  if (!PLAN || !serverReady || dirty || document.hidden || G.drag || mmEditing || document.querySelector(".modal.on")) return;
+  if (!PLAN || !serverReady || dirty || document.hidden || G.drag || mmEditing || rndEditing || rndDrag || document.querySelector(".modal.on, .rnd-pop")) return;
   try {
     const r = await api("/api/items");
     if (!r.ok) return;
-    const d = await r.json(), sig = JSON.stringify({ items: d.items, chat: d.chat, images: d.images });
+    const d = await r.json(), sig = JSON.stringify({ items: d.items, chat: d.chat, images: d.images, rnd: d.rnd || [] });
     if (sig === lastSeen || dirty) return;
     lastSeen = sig;
-    items = d.items || []; chat = d.chat || []; images = d.images || [];
+    items = d.items || []; chat = d.chat || []; images = d.images || []; rnd = d.rnd || [];
+    store.set(pkey("krefter_rnd"), rnd); renderRnd();
     store.set(pkey("krefter_v2"), items); store.set(pkey("krefter_chat"), chat.slice(-80));
     try { localStorage.setItem(pkey("krefter_images"), JSON.stringify(images)); } catch (e) {}
     build(); renderStats(); renderTasks(); renderCal(); renderChat();
@@ -2693,6 +2758,203 @@ async function pullPlan() {
   } catch (e) {}
 }
 if (PLAN) setInterval(pullPlan, 4000);
+/* ================= plan board: R&D research wall (columns of cards, written by hand) ================= */
+// Stored in `rnd` (its own shared list): columns {type:"col", id, title, color} and cards {type:"card", id, col, text, color, link}.
+// Order in the array is the order on the wall.
+const RND_COLS = [["Problem", "#e5484d"], ["Why / Causes", "#f76b15"], ["Findings", "#3b82f6"], ["Ideas", "#8b5cf6"], ["Decided", "#16a34a"]];
+const RND_COLORS = { none: "", red: "#e5484d", amber: "#f5a524", green: "#16a34a", blue: "#3b82f6", violet: "#8b5cf6" };
+const SVG = {
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>', col: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg>', link: '<svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg>', del: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>', x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+let rndView = PLAN && store.get("zia_plan_view", "map") === "rnd";
+let rndEditing = null, rndDrag = null;
+const rndCols = () => rnd.filter(r => r.type === "col");
+const rndCards = col => rnd.filter(r => r.type === "card" && r.col === col);
+function rndEnsure() { // a fresh wall starts with the five standard columns
+  if (rndCols().length) return;
+  RND_COLS.forEach(([title, color]) => rnd.push({ type: "col", id: uid(), title, color }));
+}
+function setPlanView(v) {
+  rndView = v === "rnd";
+  store.set("zia_plan_view", rndView ? "rnd" : "map");
+  document.documentElement.classList.toggle("rnd-on", rndView);
+  setSeg("vSwitch", rndView ? "rnd" : "map");
+  if (rndView) { rndEnsure(); renderRnd(); } else { G.alpha = .9; renderBar(); }
+}
+document.querySelectorAll("#vSwitch button").forEach(b => b.onclick = () => { haptic(6); setPlanView(b.dataset.v); });
+function rndPlace() { // keep the wall inside the free board area (the side panel floats on the right)
+  const phone = isMobile(); // phones use the CSS layout; clear anything set for the desktop layout
+  $("#rnd").style.right = phone ? "" : Math.max(12, boardInsets().r) + "px";
+  $("#vSwitch").style.left = phone || !G.W ? "" : (G.W - boardInsets().r) / 2 + "px";
+}
+function renderRnd() {
+  if (!PLAN) return;
+  rndPlace();
+  if (!rndView) return;
+  const wall = $("#rnd"), keepScroll = wall.scrollLeft;
+  const scrolls = {}; wall.querySelectorAll(".rnd-list").forEach(l => scrolls[l.dataset.col] = l.scrollTop);
+  wall.replaceChildren();
+  rndCols().forEach(col => {
+    const box = el("section", "rnd-col"); box.style.setProperty("--c", col.color || "var(--accent)"); box.dataset.col = col.id;
+    const head = el("div", "rnd-head"), cards = rndCards(col.id);
+    const title = el("b", null, col.title || "Untitled"); title.title = "Click to rename";
+    title.onclick = () => rndRenameCol(col, head, title);
+    const add = el("button"); add.innerHTML = SVG.plus; add.title = "Add a card"; add.setAttribute("aria-label", "Add a card to " + col.title);
+    add.onclick = () => rndAdd(col.id, true);
+    head.append(el("i"), title, el("span", "n", String(cards.length)), add);
+    if (!cards.length && rndCols().length > 1) {
+      const rm = el("button"); rm.innerHTML = SVG.x; rm.title = "Remove this empty column"; rm.setAttribute("aria-label", "Remove column");
+      rm.onclick = () => { const before = rnd.slice(); rnd = rnd.filter(r => r !== col); persist(); renderRnd(); toast("Column removed", () => { rnd = before; persist(); renderRnd(); }); };
+      head.append(rm);
+    }
+    const list = el("div", "rnd-list"); list.dataset.col = col.id;
+    cards.forEach(c => list.append(rndCardEl(c)));
+    if (!cards.length) list.append(el("div", "rnd-empty", "Nothing here yet"));
+    const more = el("button", "rnd-add"); more.innerHTML = SVG.plus + "<span>Add a card</span>"; more.onclick = () => rndAdd(col.id, false);
+    box.append(head, list, more);
+    wall.append(box);
+  });
+  const nc = el("button", "rnd-newcol", "+ Column");
+  nc.onclick = () => { const c = { type: "col", id: uid(), title: "New column", color: "#64748b" }; rnd.push(c); persist(); renderRnd(); const h = wall.querySelector(`[data-col="${c.id}"] .rnd-head`); if (h) rndRenameCol(c, h, h.querySelector("b")); };
+  wall.append(nc);
+  wall.scrollLeft = keepScroll;
+  wall.querySelectorAll(".rnd-list").forEach(l => { if (scrolls[l.dataset.col]) l.scrollTop = scrolls[l.dataset.col]; });
+  if (rndEditing) { const c = rnd.find(r => r.id === rndEditing); if (c) rndEdit(c); else rndEditing = null; }
+}
+function rndCardEl(c) {
+  const card = el("article", "rnd-card"); card.dataset.id = c.id;
+  if (RND_COLORS[c.color]) card.style.setProperty("--cc", RND_COLORS[c.color]);
+  const t = el("div", "t" + (c.text ? "" : " empty"), c.text || "Empty card. Click to write.");
+  card.append(t);
+  const meta = el("div", "meta");
+  const node = c.link && items.find(i => i.id === c.link);
+  if (node) {
+    const chip = el("span", "rnd-chip" + (node.done ? " done" : ""), "↗ " + node.text); chip.title = "Show it on the map";
+    chip.onclick = e => { e.stopPropagation(); setPlanView("map"); setTimeout(() => { focusNode(node.id); mmShow(node.id); }, 60); };
+    meta.append(chip);
+  }
+  card.append(meta);
+  const acts = el("div", "rnd-acts");
+  const btn = (svg, title, fn, cls) => { const b = el("button", cls || ""); b.innerHTML = svg; b.title = title; b.setAttribute("aria-label", title); b.onclick = e => { e.stopPropagation(); fn(b); }; acts.append(b); };
+  btn(SVG.col, "Colour", b => rndColorPop(c, b));
+  btn(SVG.link, "Link to a map node", b => rndLinkPop(c, b));
+  btn(SVG.del, "Delete card", () => rndDelete(c), "del");
+  card.append(acts);
+  card.addEventListener("pointerdown", e => rndPointerDown(e, c, card));
+  return card;
+}
+function rndAdd(colId, top) {
+  const c = { type: "card", id: uid(), col: colId, text: "", color: "none", link: "" };
+  const list = rndCards(colId);
+  const at = top && list.length ? rnd.indexOf(list[0]) : (list.length ? rnd.indexOf(list[list.length - 1]) + 1 : rnd.length);
+  rnd.splice(at, 0, c);
+  rndEditing = c.id; persist(); renderRnd();
+}
+function rndEdit(c) { // write in place
+  const card = $("#rnd").querySelector(`.rnd-card[data-id="${c.id}"]`);
+  if (!card) return;
+  rndEditing = c.id;
+  const ta = el("textarea"); ta.value = c.text || ""; ta.placeholder = "Write the problem, a cause, a finding, an idea…"; ta.maxLength = 1200;
+  const grow = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
+  card.querySelector(".t").replaceWith(ta); grow();
+  ta.addEventListener("input", grow);
+  ta.addEventListener("pointerdown", e => e.stopPropagation());
+  const done = keep => {
+    if (rndEditing !== c.id) return;
+    rndEditing = null;
+    const v = ta.value.trim();
+    if (keep && v !== (c.text || "")) c.text = v;
+    if (!c.text) rnd = rnd.filter(r => r !== c); // empty card: drop it
+    persist(); renderRnd();
+  };
+  ta.addEventListener("keydown", e => {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); done(true); }
+    else if (e.key === "Escape") { e.preventDefault(); done(!!c.text); }
+  });
+  ta.addEventListener("blur", () => done(true));
+  setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 10);
+}
+function rndDelete(c) {
+  const before = rnd.slice();
+  rnd = rnd.filter(r => r !== c); persist(); renderRnd();
+  toast("Card deleted", () => { rnd = before; persist(); renderRnd(); });
+}
+function rndRenameCol(col, head, title) {
+  const inp = el("input"); inp.value = col.title || ""; inp.maxLength = 40;
+  title.replaceWith(inp); inp.focus(); inp.select();
+  let fin = false;
+  const done = keep => { if (fin) return; fin = true; const v = inp.value.trim(); if (keep && v) col.title = v; persist(); renderRnd(); };
+  inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") done(true); else if (e.key === "Escape") done(false); });
+  inp.addEventListener("blur", () => done(true));
+}
+// small glass popovers: colour, link
+function rndPop(anchor, fill) {
+  document.querySelectorAll(".rnd-pop").forEach(p => p.remove());
+  const pop = el("div", "rnd-pop"); fill(pop); document.body.append(pop);
+  const r = anchor.getBoundingClientRect(), w = pop.offsetWidth;
+  pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + "px"; pop.style.top = r.bottom + 6 + "px";
+  setTimeout(() => document.addEventListener("pointerdown", function close(e) { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener("pointerdown", close); } }), 0);
+  return pop;
+}
+function rndColorPop(c, anchor) {
+  const pop = rndPop(anchor, pop => Object.entries(RND_COLORS).forEach(([name, hex]) => {
+    const b = el("button", "sw" + ((c.color || "none") === name ? " on" : "")); b.title = name === "none" ? "No colour" : name[0].toUpperCase() + name.slice(1);
+    b.style.background = hex || "var(--surface-solid)"; if (!hex) b.style.boxShadow = "inset 0 0 0 1.5px var(--line2)";
+    b.onclick = () => { c.color = name; persist(); renderRnd(); pop.remove(); };
+    pop.append(b);
+  }));
+}
+function rndLinkPop(c, anchor) {
+  rndPop(anchor, pop => {
+    const sel = el("select", "inp");
+    sel.append(new Option("Not linked", ""), ...items.filter(i => i.text).map(i => new Option(i.text, i.id)));
+    sel.value = c.link || "";
+    sel.onchange = () => { c.link = sel.value; persist(); renderRnd(); pop.remove(); };
+    pop.append(sel); setTimeout(() => sel.focus(), 20);
+  });
+}
+// drag cards between columns (mouse and touch)
+function rndPointerDown(e, c, card) {
+  if (e.button > 0 || e.target.closest(".rnd-acts, .rnd-chip, textarea")) return;
+  const start = { x: e.clientX, y: e.clientY };
+  const move = ev => {
+    if (!rndDrag) {
+      if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      const r = card.getBoundingClientRect(), fl = card.cloneNode(true);
+      fl.classList.add("rnd-float"); fl.style.width = r.width + "px"; document.body.append(fl);
+      const ghost = el("div", "rnd-ghost"); ghost.style.height = r.height + "px";
+      card.replaceWith(ghost);
+      rndDrag = { c, fl, ghost, dx: start.x - r.left, dy: start.y - r.top };
+    }
+    const D = rndDrag;
+    D.fl.style.left = ev.clientX - D.dx + "px"; D.fl.style.top = ev.clientY - D.dy + "px";
+    const under = document.elementFromPoint(ev.clientX, ev.clientY), col = under && under.closest(".rnd-col");
+    if (!col) return;
+    const list = col.querySelector(".rnd-list"), empty = list.querySelector(".rnd-empty");
+    if (empty) empty.remove();
+    const after = [...list.querySelectorAll(".rnd-card")].find(k => { const b = k.getBoundingClientRect(); return ev.clientY < b.top + b.height / 2; });
+    after ? list.insertBefore(D.ghost, after) : list.append(D.ghost);
+    const wall = $("#rnd"), wr = wall.getBoundingClientRect(); // edge-scroll the wall while dragging
+    if (ev.clientX > wr.right - 40) wall.scrollLeft += 14; else if (ev.clientX < wr.left + 40) wall.scrollLeft -= 14;
+  };
+  const up = () => {
+    document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); document.removeEventListener("pointercancel", up);
+    const D = rndDrag;
+    if (!D) { if (!rndEditing) rndEdit(c); return; } // a click: write
+    rndDrag = null; D.fl.remove();
+    const list = D.ghost.parentElement, colId = list && list.dataset.col;
+    if (colId) {
+      const next = D.ghost.nextElementSibling && D.ghost.nextElementSibling.dataset.id;
+      rnd = rnd.filter(r => r !== D.c); D.c.col = colId;
+      const at = next ? rnd.findIndex(r => r.id === next) : (() => { const cs = rndCards(colId); return cs.length ? rnd.indexOf(cs[cs.length - 1]) + 1 : rnd.length; })();
+      rnd.splice(at < 0 ? rnd.length : at, 0, D.c);
+      haptic(10); persist();
+    }
+    renderRnd();
+  };
+  document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); document.addEventListener("pointercancel", up);
+}
 if (PLAN && document.fonts) document.fonts.ready.then(() => build()); // labels were measured with the fallback font until now
 /* ================= plan board: a mind map (topics on the left, branches to the right) ================= */
 // Items on /plan carry `parent` (another item's id, or "" for a topic) instead of living in categories.
@@ -2823,6 +3085,14 @@ function drawTree(now) {
       ctx.fillText(`${n.stat.d}/${n.stat.t} done · ${pct}%`, lx, top + (n.lines.length - 1) * lh + 15 * s);
     }
     if (it.due && !it.done) drawDueBadge(n, it);
+    const rc = rnd.reduce((a, r) => a + (r.type === "card" && r.link === n.id ? 1 : 0), 0);
+    if (rc) { // R&D badge after the label: this node has research cards
+      const bx = lx + n.lw + 8, t = "R&D " + rc;
+      ctx.font = `600 ${10 * s}px ${FONT}`;
+      const w = ctx.measureText(t).width + 12 * s, h = 16 * s;
+      ctx.fillStyle = rgba("#8b5cf6", .14); roundRect(bx, n.y - h / 2 - (n.stat.t ? 7 * s : 0), w, h, h / 2); ctx.fill();
+      ctx.fillStyle = "#8b5cf6"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(t, bx + 6 * s, n.y + .5 - (n.stat.t ? 7 * s : 0));
+    }
   });
 }
 function drawBox() { // the rubber-band rectangle while box-selecting
@@ -2919,7 +3189,7 @@ function renderBar() {
   if (!isMobile() && G.W) { // centred in the free board area, clear of the zoom buttons
     const free = G.W - boardInsets().r;
     $("#mmBar").style.left = free / 2 + "px"; $("#mmBar").style.maxWidth = Math.max(320, free - 150) + "px";
-  }
+  } else { $("#mmBar").style.left = ""; $("#mmBar").style.maxWidth = ""; } // phones: CSS places it
 }
 document.querySelectorAll("#mmBar button").forEach(b => b.onclick = () => { haptic(8); b.blur(); mmAct(b.dataset.act); });
 
@@ -3050,11 +3320,12 @@ function setPanel(open, quiet) {
   $("#btnPanel").setAttribute("aria-pressed", String(open));
   settings.panelClosed = !open; store.set("krefter_settings", settings);
   if (quiet) return;
-  setTimeout(() => { G.userCam = false; fit(false); if (PLAN) renderBar(); }, 560); // re-frame once the panel has slid away
+  setTimeout(() => { G.userCam = false; fit(false); if (PLAN) { renderBar(); rndPlace(); } }, 560); // re-frame once the panel has slid away
 }
 $("#btnPanel").onclick = () => setPanel(document.body.classList.contains("panel-closed"));
 $("#panelClose").onclick = () => setPanel(false);
 async function boot() {
+  if (PLAN) setTimeout(() => setPlanView(rndView ? "rnd" : "map"), 0);
   if (settings.panelClosed && !isMobile()) setPanel(false, true);
   if (PLAN) $("#hint").textContent = "Press Tab or tap Topic to start the map, or just tell Zia what you're planning.";
   if (!PROFILE || PLAN) { // only your own board and the plan link to each other
