@@ -687,9 +687,24 @@
     .rnd-col { flex-basis: 84vw; }
     .rnd-acts { position: static; opacity: 1; justify-content: flex-end; margin: 6px -4px -4px 0; background: transparent; box-shadow: none; } /* own row under the text */
   }
+  /* desktop: the top bar tucks itself away so it doesn't cover the board; move to the top edge to bring it back */
+  @media (min-width: 861px) and (hover: hover) {
+    .top { transition: transform .5s var(--sheet-ease), opacity .35s ease; }
+    .legend, .vswitch, .panel, .rnd { transition: top .5s var(--sheet-ease), transform .55s var(--sheet-ease), opacity .35s ease; }
+    body.bar-hidden .top { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
+    body.bar-hidden .legend { top: 14px; }
+    body.bar-hidden .vswitch { top: 12px; }
+    body.bar-hidden .panel { top: 12px; }
+    body.bar-hidden .rnd { top: 62px; }
+    .bar-peek { position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 7; width: 120px; height: 14px; display: none; cursor: pointer; }
+    .bar-peek::after { content: ""; position: absolute; left: 30px; right: 30px; top: 5px; height: 4px; border-radius: 2px; background: var(--ink3); opacity: .35; transition: opacity .2s; }
+    .bar-peek:hover::after { opacity: .7; }
+    body.bar-hidden .bar-peek { display: block; }
+  }
 </style>
 </head>
 <body>
+<div class="bar-peek" id="barPeek" title="Show the top bar" aria-hidden="true"></div>
 <div class="app">
   <header class="top">
     <div class="brand"><div class="logo">Z</div><div>Zia<small id="brandSub">Student × Founder workspace</small></div></div>
@@ -1270,7 +1285,7 @@ function drawCover(img, x, y, w, h) { // like CSS object-fit: cover
   ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
 }
 /* sticky notes: paper squares in soft colours, a strip of tape, a folded corner */
-const NOTE_COLORS = { yellow: "#ffe58a", pink: "#ffc4d8", mint: "#bff0d2", blue: "#c2e1ff", lavender: "#ddd2ff", peach: "#ffd4b2" };
+const NOTE_COLORS = { yellow: "#ffe58a", red: "#ffb4ae", pink: "#ffc4d8", mint: "#bff0d2", blue: "#c2e1ff", lavender: "#ddd2ff", peach: "#ffd4b2" };
 const noteCache = new WeakMap();
 // A note is laid out once at its natural size (fits its text: short text = small note), then drawn scaled,
 // so making a note bigger makes its text bigger too.
@@ -2636,7 +2651,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches && !reduceMo
 }
 const ACCENTS = [
   ["Teal", "#0d9488"], ["Indigo", "#5b5bd6"], ["Emerald", "#15925e"],
-  ["Rose", "#d6336c"], ["Violet", "#7c4ddb"], ["Graphite", "#3f3f46"]
+  ["Rose", "#d6336c"], ["Red", "#dc2626"], ["Violet", "#7c4ddb"], ["Graphite", "#3f3f46"]
 ];
 function applyAccent(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -3324,7 +3339,27 @@ function setPanel(open, quiet) {
 }
 $("#btnPanel").onclick = () => setPanel(document.body.classList.contains("panel-closed"));
 $("#panelClose").onclick = () => setPanel(false);
+/* top bar auto-hide (desktop): out of the way after a few seconds; back when the pointer comes near the top */
+const BAR_HIDE_MS = 3000;
+let barTimer = null;
+const barCanHide = () => window.matchMedia("(min-width: 861px) and (hover: hover)").matches;
+function showBar() {
+  document.body.classList.remove("bar-hidden");
+  clearTimeout(barTimer); barTimer = setTimeout(hideBar, BAR_HIDE_MS);
+}
+function hideBar() {
+  const top = $(".top");
+  const busy = top.matches(":hover") || top.contains(document.activeElement) || $("#themeMenu").classList.contains("on") || !barCanHide();
+  if (busy) { clearTimeout(barTimer); barTimer = setTimeout(hideBar, BAR_HIDE_MS); return; }
+  document.body.classList.add("bar-hidden");
+}
+document.addEventListener("mousemove", e => { if (e.clientY < 70 && (document.body.classList.contains("bar-hidden") || barTimer)) showBar(); });
+$("#barPeek").addEventListener("mouseenter", showBar);
+$("#barPeek").addEventListener("click", showBar);
+$(".top").addEventListener("focusin", showBar);
+$(".top").addEventListener("mouseleave", () => { clearTimeout(barTimer); barTimer = setTimeout(hideBar, BAR_HIDE_MS); });
 async function boot() {
+  barTimer = setTimeout(hideBar, BAR_HIDE_MS + 1500); // a moment longer on first load so the bar is seen
   if (PLAN) setTimeout(() => setPlanView(rndView ? "rnd" : "map"), 0);
   if (settings.panelClosed && !isMobile()) setPanel(false, true);
   if (PLAN) $("#hint").textContent = "Press Tab or tap Topic to start the map, or just tell Zia what you're planning.";
